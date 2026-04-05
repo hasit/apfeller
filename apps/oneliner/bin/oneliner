@@ -1,0 +1,94 @@
+#!/bin/sh
+
+set -eu
+
+resolve_script_dir() {
+  script_path=$0
+
+  while [ -L "$script_path" ]; do
+    target=$(readlink "$script_path")
+    case "$target" in
+      /*)
+        script_path=$target
+        ;;
+      *)
+        script_path=$(dirname "$script_path")/$target
+        ;;
+    esac
+  done
+
+  CDPATH= cd -- "$(dirname -- "$script_path")" && pwd
+}
+
+SCRIPT_DIR=$(resolve_script_dir)
+for helper in "$SCRIPT_DIR/../lib/apfel.sh" "$SCRIPT_DIR/../../../runtime/lib/apfel.sh"; do
+  if [ -f "$helper" ]; then
+    # shellcheck disable=SC1090
+    . "$helper"
+    break
+  fi
+done
+
+if ! command -v apfeller_emit_command >/dev/null 2>&1; then
+  printf '%s\n' "Error: apfeller helper library not found." >&2
+  exit 127
+fi
+
+print_help() {
+  cat <<'EOF'
+oneliner - complex pipe chains from plain English
+
+Usage: oneliner [OPTIONS] "what you need"
+
+Options:
+  -x, --execute  Run the generated command after confirmation
+  -c, --copy     Copy the generated command to the clipboard
+  -h, --help     Show this help
+
+Examples:
+  oneliner "sum the third column of a CSV"
+  oneliner -x "count unique IPs in access.log"
+  oneliner -c "extract all URLs from a file"
+EOF
+}
+
+should_copy=0
+should_execute=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -x|--execute)
+      should_execute=1
+      shift
+      ;;
+    -c|--copy)
+      should_copy=1
+      shift
+      ;;
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      printf 'Usage: oneliner [OPTIONS] "what you need"\n' >&2
+      exit 1
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+[ $# -gt 0 ] || {
+  printf 'Usage: oneliner [OPTIONS] "what you need"\n' >&2
+  exit 1
+}
+
+request=$*
+system_prompt='You generate compact UNIX one-liners for macOS. Output ONLY the command. No markdown. No code fences. No comments. No prose. Keep it to one line. Prefer awk, sed, grep, sort, uniq, cut, tr, xargs, find, and jq. Use pipes when useful. If the user mentions a filename, path, delimiter, field number, or pattern, preserve it verbatim and do not invent replacements. Keep the command as short as possible while staying correct.'
+
+apfeller_emit_command 128 "$system_prompt" "$request" "$should_copy" "$should_execute"

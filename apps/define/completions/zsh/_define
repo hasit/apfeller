@@ -1,0 +1,13 @@
+#compdef define
+
+local -a langs
+langs=(
+  auto en es fr de it pt ja ko zh tr nl sv da nb vi
+)
+
+_arguments \
+  '(-i --in)'{-i,--in}'[Input language]:language:((auto\:auto-detect en\:English es\:Spanish fr\:French de\:German it\:Italian pt\:Portuguese ja\:Japanese ko\:Korean zh\:Chinese tr\:Turkish nl\:Dutch sv\:Swedish da\:Danish nb\:Norwegian vi\:Vietnamese))' \
+  '(-o --out)'{-o,--out}'[Output language]:language:((auto\:auto-detect en\:English es\:Spanish fr\:French de\:German it\:Italian pt\:Portuguese ja\:Japanese ko\:Korean zh\:Chinese tr\:Turkish nl\:Dutch sv\:Swedish da\:Danish nb\:Norwegian vi\:Vietnamese))' \
+  '(-c --copy)'{-c,--copy}'[Copy the response to the clipboard]' \
+  '(-h --help)'{-h,--help}'[Show help]' \
+  '*:term:_message -r term'

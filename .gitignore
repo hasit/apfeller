@@ -1,0 +1,29 @@
+# Local build and release output
+/dist/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+.direnv/
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS and filesystem noise
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.pid
+*.seed

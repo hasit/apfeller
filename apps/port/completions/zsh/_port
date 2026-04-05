@@ -1,0 +1,6 @@
+#compdef port
+
+_arguments \
+  '(-a --all)'{-a,--all}'[Show all sockets, not just listeners]' \
+  '(-h --help)'{-h,--help}'[Show help]' \
+  '1:port number:_guard "[0-9]#" "port number"'

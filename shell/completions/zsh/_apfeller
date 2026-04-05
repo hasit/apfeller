@@ -1,0 +1,31 @@
+#compdef apfeller
+
+local -a commands
+commands=(
+  'list:list catalog apps'
+  'info:show app details'
+  'install:install apps'
+  'uninstall:remove installed apps'
+  'update:update the manager or apps'
+  'doctor:inspect setup'
+)
+
+_arguments \
+  '1:command:->command' \
+  '*::args:->args'
+
+case $state in
+  command)
+    _describe 'command' commands
+    ;;
+  args)
+    case $words[2] in
+      list)
+        _arguments '--installed[show installed apps only]'
+        ;;
+      update)
+        _arguments '--self[update only the manager]' '--all[update all installed apps]'
+        ;;
+    esac
+    ;;
+esac

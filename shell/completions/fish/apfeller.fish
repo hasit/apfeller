@@ -1,0 +1,10 @@
+complete -c apfeller -f -n '__fish_use_subcommand' -a list -d 'List catalog apps'
+complete -c apfeller -f -n '__fish_use_subcommand' -a info -d 'Show app details'
+complete -c apfeller -f -n '__fish_use_subcommand' -a install -d 'Install apps'
+complete -c apfeller -f -n '__fish_use_subcommand' -a uninstall -d 'Remove installed apps'
+complete -c apfeller -f -n '__fish_use_subcommand' -a update -d 'Update the manager or apps'
+complete -c apfeller -f -n '__fish_use_subcommand' -a doctor -d 'Inspect setup'
+
+complete -c apfeller -n '__fish_seen_subcommand_from list' -l installed -d 'Show installed apps only'
+complete -c apfeller -n '__fish_seen_subcommand_from update' -l self -d 'Update only the apfeller manager'
+complete -c apfeller -n '__fish_seen_subcommand_from update' -l all -d 'Update all installed apps'

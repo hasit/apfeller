@@ -1,0 +1,7 @@
+#compdef oneliner
+
+_arguments \
+  '(-x --execute)'{-x,--execute}'[Run the generated command after confirmation]' \
+  '(-c --copy)'{-c,--copy}'[Copy the generated command to the clipboard]' \
+  '(-h --help)'{-h,--help}'[Show help]' \
+  '*:request:_message -r request'

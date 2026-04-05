@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: App smoke tests
+        run: |
+          tests/apps/test_cmd.sh
+          tests/apps/test_oneliner.sh
+          tests/apps/test_define.sh
+          tests/apps/test_port.sh
+      - name: Install script tests
+        run: tests/install/test_install.sh
+      - name: Release packaging test
+        run: tests/release/test_package_release.sh
+      - name: End-to-end manager test
+        run: tests/e2e/test_manager.sh
+      - name: Checksum mismatch test
+        run: tests/e2e/test_checksum_mismatch.sh

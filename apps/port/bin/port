@@ -1,0 +1,80 @@
+#!/bin/sh
+
+set -eu
+
+print_help() {
+  cat <<'EOF'
+port - what's using this port?
+
+Usage: port [OPTIONS] PORT_NUMBER
+
+Options:
+  -a, --all   Show all sockets, not just listeners
+  -h, --help  Show this help
+
+Examples:
+  port 3000
+  port -a 5432
+EOF
+}
+
+show_all=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -a|--all)
+      show_all=1
+      shift
+      ;;
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      printf '%s\n' "Usage: port [OPTIONS] PORT_NUMBER" >&2
+      exit 1
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+[ $# -eq 1 ] || {
+  printf '%s\n' "Usage: port [OPTIONS] PORT_NUMBER" >&2
+  exit 1
+}
+
+port_number=$1
+
+case "$port_number" in
+  ''|*[!0-9]*)
+    printf '%s\n' "Error: port must be a number between 1 and 65535." >&2
+    exit 1
+    ;;
+esac
+
+if [ "$port_number" -lt 1 ] || [ "$port_number" -gt 65535 ]; then
+  printf '%s\n' "Error: port must be a number between 1 and 65535." >&2
+  exit 1
+fi
+
+if [ "$show_all" -eq 1 ]; then
+  output=$(lsof -nP -i :"$port_number" 2>/dev/null || true)
+else
+  output=$(lsof -nP -iTCP:"$port_number" -sTCP:LISTEN 2>/dev/null || true)
+  if [ -z "$output" ]; then
+    output=$(lsof -nP -i :"$port_number" 2>/dev/null || true)
+  fi
+fi
+
+if [ -z "$output" ]; then
+  printf 'Port %s is not in use.\n' "$port_number"
+  exit 0
+fi
+
+printf '%s\n' "$output"

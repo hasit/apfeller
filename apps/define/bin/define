@@ -1,0 +1,121 @@
+#!/bin/sh
+
+set -eu
+
+resolve_script_dir() {
+  script_path=$0
+
+  while [ -L "$script_path" ]; do
+    target=$(readlink "$script_path")
+    case "$target" in
+      /*)
+        script_path=$target
+        ;;
+      *)
+        script_path=$(dirname "$script_path")/$target
+        ;;
+    esac
+  done
+
+  CDPATH= cd -- "$(dirname -- "$script_path")" && pwd
+}
+
+SCRIPT_DIR=$(resolve_script_dir)
+for helper in "$SCRIPT_DIR/../lib/apfel.sh" "$SCRIPT_DIR/../../../runtime/lib/apfel.sh"; do
+  if [ -f "$helper" ]; then
+    # shellcheck disable=SC1090
+    . "$helper"
+    break
+  fi
+done
+
+if ! command -v apfeller_query >/dev/null 2>&1; then
+  printf '%s\n' "Error: apfeller helper library not found." >&2
+  exit 127
+fi
+
+print_help() {
+  cat <<'EOF'
+define - multilingual dictionary lookup
+
+Usage: define [OPTIONS] WORD_OR_PHRASE
+
+Options:
+  -i, --in LANG   Input language (default: auto)
+  -o, --out LANG  Output language for meaning/example (default: en)
+  -c, --copy      Copy the response to the clipboard
+  -h, --help      Show this help
+
+Examples:
+  define serendipity
+  define hola
+  define -o es resilience
+  define -i ja -o en 侘び寂び
+EOF
+}
+
+input_lang=auto
+output_lang=en
+should_copy=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -i|--in)
+      [ $# -ge 2 ] || {
+        printf '%s\n' "Usage: define [OPTIONS] WORD_OR_PHRASE" >&2
+        exit 1
+      }
+      input_lang=$2
+      shift 2
+      ;;
+    -o|--out)
+      [ $# -ge 2 ] || {
+        printf '%s\n' "Usage: define [OPTIONS] WORD_OR_PHRASE" >&2
+        exit 1
+      }
+      output_lang=$2
+      shift 2
+      ;;
+    -c|--copy)
+      should_copy=1
+      shift
+      ;;
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      printf '%s\n' "Usage: define [OPTIONS] WORD_OR_PHRASE" >&2
+      exit 1
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+[ $# -gt 0 ] || {
+  printf '%s\n' "Usage: define [OPTIONS] WORD_OR_PHRASE" >&2
+  exit 1
+}
+
+term=$*
+system_prompt='You are a tiny multilingual dictionary. Output exactly 4 labeled fields: word, lang, meaning, example. No markdown. No bullets. No extra fields. Keep the full reply under 80 tokens. Detect the input language unless it is provided explicitly. If the detected input language is English, write the meaning and example in the requested output language. If the detected input language is not English and the requested output language is English, write the meaning in English and write the example in the original language followed by a concise English translation in parentheses on the same line. If the requested output language is not English, write the meaning and example in that requested output language.'
+prompt=$(printf 'Input language: %s\nOutput language: %s\nTerm: %s' "$input_lang" "$output_lang" "$term")
+
+response=$(apfeller_query 120 "$system_prompt" "$prompt") || exit $?
+
+formatted=$(printf '%s\n' "$response" \
+  | perl -0pe 's/\s+(lang:|meaning:|example:)/\n$1/g' \
+  | sed '/^[[:space:]]*$/d')
+
+printf '%s\n' "$formatted"
+
+if [ "$should_copy" = "1" ]; then
+  apfeller_copy "$formatted" || exit $?
+  printf '%s\n' "(copied)"
+fi
