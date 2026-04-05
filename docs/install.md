@@ -21,6 +21,11 @@ What it does:
 - If the shell cannot be detected, installs the binary anyway and prints one
   manual `PATH` command instead of guessing
 
+App discovery:
+
+- By default `apfeller` reads `https://raw.githubusercontent.com/hasit/apfeller-apps/main/catalog/latest.tsv`
+- You can override that with `APFELLER_CATALOG_URL`
+
 Installed paths:
 
 - `~/.local/bin/apfeller`
@@ -31,7 +36,7 @@ Installed paths:
 
 App payload paths:
 
-- `~/.local/share/apfeller/store/<app>/<version>/`
+- `~/.local/share/apfeller/store/<app>/<revision>/`
 - `~/.local/share/apfeller/state.tsv`
 
 Installed app bundles contain compiled framework metadata. `apfeller` generates

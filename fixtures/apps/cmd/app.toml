@@ -1,5 +1,4 @@
 id = "cmd"
-version = "0.1.0"
 summary = "Turn natural language into a shell command with apfel."
 description = "Generate a single macOS shell command from a natural language request. Supports copy to clipboard and optional execution after confirmation."
 command = "cmd"

@@ -29,6 +29,9 @@ apfeller list
 apfeller install cmd oneliner
 ```
 
+By default the manager reads its published app catalog from
+`hasit/apfeller-apps`.
+
 ## AI Apps
 
 - `cmd`: natural language to a single shell command via `apfel`

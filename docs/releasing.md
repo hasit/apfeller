@@ -3,26 +3,33 @@
 `apfeller` releases publish:
 
 - A portable manager asset: `apfeller.tar.gz`
-- Versioned app bundle archives under `apps/`
-- A generated `apfeller-catalog.tsv` asset with matching SHA-256 checksums
 
-Each app archive contains the author-facing `app.toml`, a compiled
-`runtime/manifest.env`, `runtime/args.tsv`, `runtime/examples.txt`, and any
-declared hooks. App archives no longer ship handwritten `bin/` entrypoints or
-handwritten app completions.
+Published app bundles and the catalog now belong to the separate
+`apfeller-apps` repo. This repo keeps fixture apps and local packaging scripts
+so CI can validate the manager against the same catalog format.
 
-Local release packaging:
+Manager release packaging:
 
 ```sh
 scripts/package_release.sh --output-dir dist
 ```
 
+That script packages only:
+
+- `dist/apfeller.tar.gz`
+
+Local fixture catalog packaging:
+
+```sh
+scripts/package_catalog.sh --output-dir dist --app-dir fixtures/apps --bundle-base-url "file://$PWD/dist"
+```
+
 That script:
 
-- Builds app bundle tarballs into `dist/`
-- Validates constrained `app.toml` definitions
+- Validates constrained fixture `app.toml` definitions
+- Computes a generated revision for each fixture app
 - Compiles framework runtime manifests for each app
 - Generates `dist/apfeller-catalog.tsv`
-- Packages the shell manager and completions into `dist/apfeller.tar.gz`
+- Packages fixture app bundles into `dist/<app>-<revision>.tar.gz`
 
 GitHub Actions validates the same shell packaging flow in CI.

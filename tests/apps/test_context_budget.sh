@@ -16,12 +16,23 @@ dist_dir="$tmp_dir/dist"
 extract_dir="$tmp_dir/extracted"
 
 sh "$ROOT_DIR/scripts/package_release.sh" --output-dir "$dist_dir" >/dev/null
+sh "$ROOT_DIR/scripts/package_catalog.sh" --output-dir "$dist_dir" --app-dir "$ROOT_DIR/fixtures/apps" --bundle-base-url "file://$dist_dir" >/dev/null
 mkdir -p "$extract_dir"
 
 for app in cmd oneliner define; do
   app_dir="$extract_dir/$app"
+  app_archive=$(
+    awk -F '\t' -v app_id="$app" '
+      NR > 1 && $1 == app_id {
+        bundle_url = $9
+        sub(/^file:\/\//, "", bundle_url)
+        print bundle_url
+        exit
+      }
+    ' "$dist_dir/apfeller-catalog.tsv"
+  )
   mkdir -p "$app_dir"
-  tar -xzf "$dist_dir/$app-0.1.0.tar.gz" -C "$app_dir"
+  tar -xzf "$app_archive" -C "$app_dir"
 
   # shellcheck disable=SC1090
   . "$app_dir/runtime/manifest.env"

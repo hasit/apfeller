@@ -1,5 +1,4 @@
 id = "oneliner"
-version = "0.1.0"
 summary = "Turn plain English into a shell one-liner with apfel."
 description = "Generate compact UNIX one-liners and pipe chains from a natural language request using apfel."
 command = "oneliner"

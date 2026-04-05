@@ -17,7 +17,7 @@ set +e
 list_output=$(
   HOME="$tmp_dir/home" \
   PATH="$stub_dir:$PATH" \
-  APFELLER_CATALOG_URL="https://github.com/hasit/apfeller/releases/latest/download/apfeller-catalog.tsv" \
+  APFELLER_CATALOG_URL="https://raw.githubusercontent.com/hasit/apfeller-apps/main/catalog/latest.tsv" \
   sh "$ROOT_DIR/shell/bin/apfeller" list 2>&1
 )
 list_status=$?
@@ -29,7 +29,6 @@ if [ "$list_status" -eq 0 ]; then
 fi
 
 assert_contains "$list_output" 'Failed to download app catalog' "list should identify the missing catalog asset"
-assert_contains "$list_output" 'No published GitHub release asset was found for apfeller-catalog.tsv.' "list should explain the missing catalog release asset"
 assert_contains "$list_output" 'APFELLER_CATALOG_URL' "list should point to the catalog override variable"
 
 set +e

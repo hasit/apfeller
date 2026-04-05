@@ -1,7 +1,9 @@
 # Authoring Apps
 
-Each app lives under `apps/<id>/` and is declared once in `app.toml`.
-Optional executable hooks live under `apps/<id>/hooks/`.
+Real published apps now live in the separate `apfeller-apps` repo. This repo
+keeps fixture apps under `fixtures/apps/<id>/` so the manager, schema, and
+packaging flow can be tested locally. Optional executable hooks live under
+`fixtures/apps/<id>/hooks/`.
 
 `apfeller` does not ship handwritten per-app entrypoint scripts or handwritten
 per-app completions anymore. Release packaging compiles each `app.toml` into a
@@ -10,14 +12,13 @@ and fish/zsh completions.
 
 ## Layout
 
-- `apps/<id>/app.toml`: the single source of truth for the app definition.
-- `apps/<id>/hooks/*.sh`: optional executable hooks used for validation or
+- `fixtures/apps/<id>/app.toml`: the fixture source of truth for a test app.
+- `fixtures/apps/<id>/hooks/*.sh`: optional executable hooks used for validation or
   prompt building.
 
 ## Required Top-Level Fields
 
 - `id`: stable app identifier used in the catalog and `apfeller install <id>`.
-- `version`: app release version used for packaging and store paths.
 - `summary`: short one-line description shown in listings.
 - `description`: fuller description shown in help and `apfeller info`.
 - `command`: installed command name users run from the shell.
@@ -25,6 +26,9 @@ and fish/zsh completions.
 - `requires_commands`: external commands the app depends on, such as `apfel`
   or `pbcopy`.
 - `supported_shells`: shells that should receive generated completions.
+
+Published bundles get a generated immutable `revision` during packaging. Authors
+do not need to maintain manual app semver in `app.toml`.
 
 Supported `kind` values:
 
@@ -130,14 +134,13 @@ Runtime also rejects oversized requests before calling apfel.
 ## Release Packaging
 
 ```sh
-scripts/package_release.sh --output-dir dist
+scripts/package_catalog.sh --output-dir dist --app-dir fixtures/apps --bundle-base-url "file://$PWD/dist"
 ```
 
 That produces:
 
-- `dist/apfeller.tar.gz`
 - `dist/apfeller-catalog.tsv`
-- `dist/<app>-<version>.tar.gz`
+- `dist/<app>-<revision>.tar.gz`
 
 Each app archive contains:
 

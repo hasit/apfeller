@@ -432,7 +432,6 @@ appfw_set_value() {
 
 appfw_validate_definition() {
   [ -n "$APP_ID" ] || appfw_fail "Missing id"
-  [ -n "$APP_VERSION" ] || appfw_fail "Missing version"
   [ -n "$APP_SUMMARY" ] || appfw_fail "Missing summary"
   [ -n "$APP_DESCRIPTION" ] || appfw_fail "Missing description"
   [ -n "$APP_COMMAND" ] || appfw_fail "Missing command"
@@ -529,7 +528,9 @@ appfw_validate_definition() {
   fi
 
   appfw_validate_single_line "id" "$APP_ID"
-  appfw_validate_single_line "version" "$APP_VERSION"
+  if [ -n "$APP_VERSION" ]; then
+    appfw_validate_single_line "version" "$APP_VERSION"
+  fi
   appfw_validate_single_line "summary" "$APP_SUMMARY"
   appfw_validate_single_line "description" "$APP_DESCRIPTION"
   appfw_validate_single_line "command" "$APP_COMMAND"

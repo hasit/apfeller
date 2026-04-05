@@ -23,7 +23,7 @@ print_missing_release_asset_hint() {
   override_var=$3
 
   case "$url" in
-    https://github.com/*/releases/latest/download/*|http://github.com/*/releases/latest/download/*)
+    https://github.com/*/releases/latest/download/*|http://github.com/*/releases/latest/download/*|https://github.com/*/releases/download/*/*|http://github.com/*/releases/download/*/*)
       printf '%s\n' "No published GitHub release asset was found for $asset_name." >&2
       printf '%s\n' "Publish a release containing $asset_name, or set $override_var to a direct URL." >&2
       ;;
@@ -41,6 +41,7 @@ download_to_path() {
   status=$?
 
   printf '%s\n' "Failed to download $label from $url" >&2
+  printf '%s\n' "Override with $override_var to use a different URL." >&2
   print_missing_release_asset_hint "$url" "$asset_name" "$override_var"
   return "$status"
 }

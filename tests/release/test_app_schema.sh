@@ -19,7 +19,7 @@ run_invalid_case() {
   set +e
   output=$(
     APFELLER_ROOT_DIR="$repo_dir" \
-    sh "$ROOT_DIR/scripts/package_release.sh" --output-dir "$tmp_dir/dist" 2>&1
+    sh "$ROOT_DIR/scripts/package_catalog.sh" --output-dir "$tmp_dir/dist" --app-dir "$repo_dir/fixtures/apps" --bundle-base-url "file://$tmp_dir/dist" 2>&1
   )
   status=$?
   set -e
@@ -36,7 +36,7 @@ run_invalid_case() {
 
 run_invalid_case \
   "invalid kind/output combination" \
-  'cat >"$1/apps/cmd/app.toml" <<'"'"'EOF'"'"'
+  'cat >"$1/fixtures/apps/cmd/app.toml" <<'"'"'EOF'"'"'
 id = "cmd"
 version = "0.1.0"
 summary = "broken"
@@ -69,7 +69,7 @@ EOF' \
 
 run_invalid_case \
   "duplicate long flag" \
-  'cat >"$1/apps/define/app.toml" <<'"'"'EOF'"'"'
+  'cat >"$1/fixtures/apps/define/app.toml" <<'"'"'EOF'"'"'
 id = "define"
 version = "0.1.0"
 summary = "broken"
@@ -119,7 +119,7 @@ EOF' \
 
 run_invalid_case \
   "reserved arg name" \
-  'cat >"$1/apps/define/app.toml" <<'"'"'EOF'"'"'
+  'cat >"$1/fixtures/apps/define/app.toml" <<'"'"'EOF'"'"'
 id = "define"
 version = "0.1.0"
 summary = "broken"
@@ -160,12 +160,12 @@ EOF' \
 
 run_invalid_case \
   "unsupported nested section" \
-  'printf "%s\n" "[help.extra]" >>"$1/apps/cmd/app.toml"' \
+  'printf "%s\n" "[help.extra]" >>"$1/fixtures/apps/cmd/app.toml"' \
   "Unsupported section syntax"
 
 run_invalid_case \
   "removed local-command kind" \
-  'cat >"$1/apps/cmd/app.toml" <<'"'"'EOF'"'"'
+  'cat >"$1/fixtures/apps/cmd/app.toml" <<'"'"'EOF'"'"'
 id = "cmd"
 version = "0.1.0"
 summary = "broken"
@@ -191,7 +191,7 @@ EOF' \
 
 run_invalid_case \
   "removed local_passthrough output" \
-  'cat >"$1/apps/cmd/app.toml" <<'"'"'EOF'"'"'
+  'cat >"$1/fixtures/apps/cmd/app.toml" <<'"'"'EOF'"'"'
 id = "cmd"
 version = "0.1.0"
 summary = "broken"
@@ -224,7 +224,7 @@ EOF' \
 
 run_invalid_case \
   "removed hooks.local_run key" \
-  'cat >"$1/apps/cmd/app.toml" <<'"'"'EOF'"'"'
+  'cat >"$1/fixtures/apps/cmd/app.toml" <<'"'"'EOF'"'"'
 id = "cmd"
 version = "0.1.0"
 summary = "broken"

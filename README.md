@@ -1,6 +1,6 @@
 # apfeller
 
-`apfeller` is an AI-powered collection of small shell apps built on
+`apfeller` is a manager + runtime for small shell apps built on
 [apfel](https://apfel.franzai.com/) ([source repo](https://github.com/Arthur-Ficial/apfel)).
 The AI apps run fully local on your Mac with zero API cost: no API bill, no API
 keys, and no cloud round-trip.
@@ -13,9 +13,10 @@ context window.
 ## What v1 includes
 
 - A POSIX `sh`-based `apfeller` manager
-- A shell app framework with author-facing `apps/<id>/app.toml` definitions
+- A shell app framework with shared `app.toml` validation and packaging tooling
 - Compiled runtime manifests plus generated wrappers and completions at install time
 - Portable POSIX shell app bundles with optional prompt and validation hooks
+- A default remote app catalog published from `hasit/apfeller-apps`
 - Fish and zsh integration
 - A one-line installer for the manager
 
@@ -32,9 +33,9 @@ apfeller list
 apfeller install cmd oneliner
 ```
 
-The manager fetches its app catalog from the latest release catalog asset
-`apfeller-catalog.tsv`, then downloads matching app bundle tarballs from the
-same release.
+The manager fetches its app catalog from the stable raw URL
+`https://raw.githubusercontent.com/hasit/apfeller-apps/main/catalog/latest.tsv`
+by default, then downloads the exact bundle URLs listed in that catalog.
 
 ## Commands
 
@@ -79,13 +80,14 @@ Package local release assets:
 
 ```sh
 scripts/package_release.sh --output-dir dist
+scripts/package_catalog.sh --output-dir dist --app-dir fixtures/apps --bundle-base-url "file://$PWD/dist"
 ```
 
 That produces:
 
 - `dist/apfeller.tar.gz`
 - `dist/apfeller-catalog.tsv`
-- `dist/*.tar.gz` for app bundles
+- `dist/<app>-<revision>.tar.gz` for fixture app bundles
 
 Each app bundle now contains its `app.toml`, a compiled runtime manifest, args
 metadata, examples metadata, and any declared hooks. Installed commands are

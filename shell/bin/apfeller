@@ -3,7 +3,8 @@
 set -eu
 
 APFELLER_MANAGER_VERSION=${APFELLER_MANAGER_VERSION:-0.1.0}
-REPO=${APFELLER_REPO:-hasit/apfeller}
+MANAGER_REPO=${APFELLER_REPO:-hasit/apfeller}
+APPS_REPO=${APFELLER_APPS_REPO:-hasit/apfeller-apps}
 HOME_DIR=${HOME:?HOME is required}
 LOCAL_BIN_DIR=${APFELLER_LOCAL_BIN_DIR:-"$HOME_DIR/.local/bin"}
 CONFIG_DIR=${APFELLER_CONFIG_DIR:-"$HOME_DIR/.config/apfeller"}
@@ -17,11 +18,10 @@ ZSH_INIT_PATH=${APFELLER_ZSH_INIT_PATH:-"$CONFIG_DIR/init.zsh"}
 ZSHRC_PATH=${APFELLER_ZSHRC_PATH:-"$HOME_DIR/.zshrc"}
 DETECTED_SHELL=${APFELLER_SHELL:-${SHELL:-}}
 DETECTED_SHELL=${DETECTED_SHELL##*/}
-DEFAULT_RELEASE_BASE_URL="https://github.com/$REPO/releases/latest/download"
-RELEASE_BASE_URL=${APFELLER_RELEASE_BASE_URL:-"$DEFAULT_RELEASE_BASE_URL"}
-CATALOG_URL=${APFELLER_CATALOG_URL:-"$RELEASE_BASE_URL/apfeller-catalog.tsv"}
+DEFAULT_CATALOG_URL="https://raw.githubusercontent.com/$APPS_REPO/main/catalog/latest.tsv"
+CATALOG_URL=${APFELLER_CATALOG_URL:-"$DEFAULT_CATALOG_URL"}
 MANAGER_ASSET_NAME=${APFELLER_MANAGER_ASSET_NAME:-apfeller.tar.gz}
-SELF_UPDATE_URL=${APFELLER_INSTALL_URL:-"$RELEASE_BASE_URL/$MANAGER_ASSET_NAME"}
+SELF_UPDATE_URL=${APFELLER_INSTALL_URL:-"https://github.com/$MANAGER_REPO/releases/latest/download/$MANAGER_ASSET_NAME"}
 TAB=$(printf '\t')
 US=$(printf '\034')
 TMP_DIR=""
@@ -67,7 +67,7 @@ print_missing_release_asset_hint() {
   override_var=$3
 
   case "$url" in
-    https://github.com/*/releases/latest/download/*|http://github.com/*/releases/latest/download/*)
+    https://github.com/*/releases/latest/download/*|http://github.com/*/releases/latest/download/*|https://github.com/*/releases/download/*/*|http://github.com/*/releases/download/*/*)
       printf '%s\n' "No published GitHub release asset was found for $asset_name." >&2
       printf '%s\n' "Publish a release containing $asset_name, or set $override_var to a direct URL." >&2
       ;;
@@ -85,6 +85,7 @@ download_to_path() {
   status=$?
 
   printf '%s\n' "Failed to download $label from $url" >&2
+  printf '%s\n' "Override with $override_var to use a different URL." >&2
   print_missing_release_asset_hint "$url" "$asset_name" "$override_var"
   return "$status"
 }
@@ -160,7 +161,7 @@ sanitize_name() {
 ensure_state_file() {
   ensure_dir "$(dirname "$STATE_PATH")"
   if [ ! -f "$STATE_PATH" ]; then
-    printf 'id\tversion\tcommand\tinstalled_at\n' >"$STATE_PATH"
+    printf 'id\trevision\tcommand\tinstalled_at\n' >"$STATE_PATH"
   fi
 }
 
@@ -209,13 +210,13 @@ state_remove() {
 
 state_upsert() {
   app_id=$1
-  version=$2
+  revision=$2
   command_name=$3
   installed_at=$4
 
   ensure_state_file
   state_remove "$app_id"
-  printf '%s\t%s\t%s\t%s\n' "$app_id" "$version" "$command_name" "$installed_at" >>"$STATE_PATH"
+  printf '%s\t%s\t%s\t%s\n' "$app_id" "$revision" "$command_name" "$installed_at" >>"$STATE_PATH"
 }
 
 fetch_catalog() {
@@ -254,7 +255,7 @@ load_catalog_entry() {
 
   CAT_ID=$1
   shift
-  CAT_VERSION=$1
+  CAT_REVISION=$1
   shift
   CAT_SUMMARY=$1
   shift
@@ -268,7 +269,7 @@ load_catalog_entry() {
   shift
   CAT_SUPPORTED_SHELLS=$1
   shift
-  CAT_BUNDLE_ARCHIVE=$1
+  CAT_BUNDLE_URL=$1
   shift
   CAT_SHA256=$1
 }
@@ -469,7 +470,7 @@ load_runtime_manifest() {
   [ -f "$APP_EXAMPLES_PATH" ] || fail "App bundle is missing runtime/examples.txt"
 
   APFELLER_APP_ID=
-  APFELLER_APP_VERSION=
+  APFELLER_APP_REVISION=
   APFELLER_APP_SUMMARY=
   APFELLER_APP_DESCRIPTION=
   APFELLER_APP_COMMAND=
@@ -667,11 +668,12 @@ install_app() {
 
   command_name=$CAT_COMMAND
   command_path="$LOCAL_BIN_DIR/$command_name"
-  archive_url="$RELEASE_BASE_URL/$CAT_BUNDLE_ARCHIVE"
-  archive_path="$TMP_DIR/$CAT_BUNDLE_ARCHIVE"
+  bundle_url=$CAT_BUNDLE_URL
+  bundle_name=${bundle_url##*/}
+  archive_path="$TMP_DIR/$CAT_ID-$CAT_REVISION.tar.gz"
   extract_dir="$TMP_DIR/extract-$CAT_ID"
-  store_path="$STORE_DIR/$CAT_ID/$CAT_VERSION"
-  previous_version=$(state_get_field "$CAT_ID" 2)
+  store_path="$STORE_DIR/$CAT_ID/$CAT_REVISION"
+  previous_revision=$(state_get_field "$CAT_ID" 2)
 
   ensure_dir "$LOCAL_BIN_DIR"
   ensure_dir "$DATA_DIR"
@@ -679,7 +681,7 @@ install_app() {
   ensure_dir "$(dirname "$store_path")"
   ensure_command_slot_available "$command_name"
 
-  download_to_path "$archive_url" "$archive_path" "$CAT_ID app bundle" "$CAT_BUNDLE_ARCHIVE" "APFELLER_RELEASE_BASE_URL"
+  download_to_path "$bundle_url" "$archive_path" "$CAT_ID app bundle" "$bundle_name" "APFELLER_CATALOG_URL"
   actual_sha=$(shasum -a 256 "$archive_path" | awk '{print $1}')
   if [ "$actual_sha" != "$CAT_SHA256" ]; then
     fail "Checksum mismatch for $CAT_ID: expected $CAT_SHA256, got $actual_sha"
@@ -692,6 +694,7 @@ install_app() {
   load_runtime_manifest "$extract_dir"
   [ "$APFELLER_APP_COMMAND" = "$CAT_COMMAND" ] || fail "Bundle command mismatch for $CAT_ID"
   [ "$APFELLER_APP_KIND" = "$CAT_KIND" ] || fail "Bundle kind mismatch for $CAT_ID"
+  [ "$APFELLER_APP_REVISION" = "$CAT_REVISION" ] || fail "Bundle revision mismatch for $CAT_ID"
 
   rm -rf "$store_path"
   mv "$extract_dir" "$store_path"
@@ -703,22 +706,22 @@ install_app() {
   install_app_completions "$store_path" "$command_name"
 
   installed_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-  state_upsert "$CAT_ID" "$CAT_VERSION" "$CAT_COMMAND" "$installed_at"
+  state_upsert "$CAT_ID" "$CAT_REVISION" "$CAT_COMMAND" "$installed_at"
 
-  if [ -n "$previous_version" ] && [ "$previous_version" != "$CAT_VERSION" ]; then
-    rm -rf "$STORE_DIR/$CAT_ID/$previous_version"
+  if [ -n "$previous_revision" ] && [ "$previous_revision" != "$CAT_REVISION" ]; then
+    rm -rf "$STORE_DIR/$CAT_ID/$previous_revision"
   fi
 
-  printf 'Installed %s %s\n' "$CAT_ID" "$CAT_VERSION"
+  printf 'Installed %s %s\n' "$CAT_ID" "$CAT_REVISION"
 }
 
 uninstall_app() {
   app_id=$1
 
-  version=$(state_get_field "$app_id" 2)
+  revision=$(state_get_field "$app_id" 2)
   command_name=$(state_get_field "$app_id" 3)
 
-  if [ -z "$version" ] || [ -z "$command_name" ]; then
+  if [ -z "$revision" ] || [ -z "$command_name" ]; then
     printf '%s is not installed.\n' "$app_id"
     return 0
   fi
@@ -726,7 +729,7 @@ uninstall_app() {
   command_path="$LOCAL_BIN_DIR/$command_name"
   fish_completion_path="$FISH_COMPLETION_DIR/$command_name.fish"
   zsh_completion_path="$ZSH_COMPLETION_DIR/_$command_name"
-  store_path="$STORE_DIR/$app_id/$version"
+  store_path="$STORE_DIR/$app_id/$revision"
 
   if is_managed_symlink "$command_path"; then
     rm -f "$command_path"
@@ -1353,13 +1356,13 @@ cmd_list() {
 
   catalog_file=$(fetch_catalog)
   awk -F '\t' 'NR > 1 { print $1 "\t" $2 "\t" $3 }' "$catalog_file" |
-    while IFS="$TAB" read -r app_id version summary; do
+    while IFS="$TAB" read -r app_id revision summary; do
       if state_has_app "$app_id"; then
         status="installed"
       else
         status="available"
       fi
-      printf '%s\t%s\t%s\t%s\n' "$app_id" "$version" "$status" "$summary"
+      printf '%s\t%s\t%s\t%s\n' "$app_id" "$revision" "$status" "$summary"
     done
 }
 
@@ -1373,14 +1376,14 @@ cmd_info() {
   supported_shells=${CAT_SUPPORTED_SHELLS:-"(none)"}
 
   printf 'id: %s\n' "$CAT_ID"
-  printf 'version: %s\n' "$CAT_VERSION"
+  printf 'revision: %s\n' "$CAT_REVISION"
   printf 'summary: %s\n' "$CAT_SUMMARY"
   printf 'description: %s\n' "$CAT_DESCRIPTION"
   printf 'command: %s\n' "$CAT_COMMAND"
   printf 'kind: %s\n' "$CAT_KIND"
   printf 'requires: %s\n' "$requires"
   printf 'supported_shells: %s\n' "$supported_shells"
-  printf 'bundle_archive: %s\n' "$CAT_BUNDLE_ARCHIVE"
+  printf 'bundle_url: %s\n' "$CAT_BUNDLE_URL"
   printf 'sha256: %s\n' "$CAT_SHA256"
 }
 
@@ -1416,7 +1419,7 @@ cmd_update() {
         return 0
       fi
       catalog_file=$(fetch_catalog)
-      while IFS="$TAB" read -r app_id version command_name installed_at; do
+      while IFS="$TAB" read -r app_id revision command_name installed_at; do
         [ "$app_id" = "id" ] && continue
         install_app "$app_id" "$catalog_file"
       done <"$STATE_PATH"
