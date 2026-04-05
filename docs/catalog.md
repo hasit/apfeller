@@ -14,8 +14,7 @@ editing this site.
 Install `apfeller` first, then pick an app below and run
 `apfeller install <app>`.
 
-Download counts come from each app's published GitHub release when that data is
-available.
+When GitHub reports release download counts, they appear on the matching app.
 
 ## Published Apps
 

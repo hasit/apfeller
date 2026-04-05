@@ -72,7 +72,7 @@ assert_not_contains "$catalog_page" '`oneliner`' "catalog page should not hardco
 
 assert_contains "$catalog_js" 'https://raw.githubusercontent.com/hasit/apfeller-apps/main/catalog/latest.tsv' "catalog script should fetch the published raw catalog"
 assert_contains "$catalog_js" 'https://github.com/hasit/apfeller-apps/tree/main/apps/' "catalog script should link each entry back to its source directory"
-assert_contains "$catalog_js" 'https://api.github.com/repos/hasit/apfeller-apps/releases/tags/' "catalog script should fetch per-app release stats"
+assert_contains "$catalog_js" 'https://api.github.com/repos/hasit/apfeller-apps/releases?per_page=100' "catalog script should fetch release stats from the published app repo"
 assert_contains "$catalog_js" 'download_count' "catalog script should read download counts from release assets"
 assert_contains "$catalog_js" 'downloads' "catalog script should render per-app download stats"
 assert_contains "$catalog_js" 'Loading current catalog' "catalog script should support a loading state"

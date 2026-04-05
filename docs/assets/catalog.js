@@ -2,7 +2,7 @@
   var CATALOG_URL = "https://raw.githubusercontent.com/hasit/apfeller-apps/main/catalog/latest.tsv";
   var APPS_REPO_URL = "https://github.com/hasit/apfeller-apps";
   var APP_SOURCE_BASE_URL = "https://github.com/hasit/apfeller-apps/tree/main/apps/";
-  var RELEASE_API_BASE_URL = "https://api.github.com/repos/hasit/apfeller-apps/releases/tags/";
+  var RELEASES_API_URL = "https://api.github.com/repos/hasit/apfeller-apps/releases?per_page=100";
   var statusNode = document.getElementById("catalog-status");
   var gridNode = document.getElementById("catalog-grid");
 
@@ -44,7 +44,11 @@
       return "";
     }
 
-    return value.toLocaleString("en-US") + " downloads";
+    if (value === 1) {
+      return "1 GitHub download";
+    }
+
+    return value.toLocaleString("en-US") + " GitHub downloads";
   }
 
   function parseCatalog(text) {
@@ -79,28 +83,33 @@
 
   function renderCard(row) {
     var sourceUrl = APP_SOURCE_BASE_URL + encodeURIComponent(row.id);
-    var downloads = typeof row.downloads === "number"
+    var downloads = row.downloads > 0
       ? "<span class=\"catalog-downloads\">" + escapeHtml(formatDownloads(row.downloads)) + "</span>"
       : "";
     var article = document.createElement("article");
     article.className = "catalog-card";
     article.innerHTML =
       "<div class=\"catalog-card-top\">" +
-      "<div class=\"catalog-heading\">" +
+      "<div class=\"catalog-title-row\">" +
       "<h3>" + escapeHtml(row.id) + "</h3>" +
-      "<p class=\"catalog-summary\">" + escapeHtml(row.summary) + "</p>" +
-      "</div>" +
-      "<div class=\"catalog-side\">" +
       "<code class=\"catalog-command\">" + escapeHtml(row.command) + "</code>" +
+      "</div>" +
       downloads +
       "</div>" +
-      "</div>" +
-      "<p class=\"catalog-description\">" + escapeHtml(row.description) + "</p>" +
+      "<p class=\"catalog-summary\">" + escapeHtml(row.summary) + "</p>" +
       "<div class=\"catalog-meta\">" +
-      "<div class=\"catalog-meta-row\"><strong>Requires</strong> <span class=\"catalog-pills\">" + renderPills(splitCsv(row.requires)) + "</span></div>" +
-      "<div class=\"catalog-meta-row\"><strong>Shells</strong> <span class=\"catalog-pills\">" + renderPills(splitCsv(row.supported_shells)) + "</span></div>" +
-      "<div class=\"catalog-meta-row catalog-install\"><strong>Install</strong> <code>apfeller install " + escapeHtml(row.id) + "</code></div>" +
-      "<div class=\"catalog-meta-row\"><strong>Source</strong> <a href=\"" + sourceUrl + "\">apps/" + escapeHtml(row.id) + "</a></div>" +
+      "<div class=\"catalog-meta-block\">" +
+      "<span class=\"catalog-meta-label\">Requires</span>" +
+      "<span class=\"catalog-pills\">" + renderPills(splitCsv(row.requires)) + "</span>" +
+      "</div>" +
+      "<div class=\"catalog-meta-block\">" +
+      "<span class=\"catalog-meta-label\">Shells</span>" +
+      "<span class=\"catalog-pills\">" + renderPills(splitCsv(row.supported_shells)) + "</span>" +
+      "</div>" +
+      "</div>" +
+      "<div class=\"catalog-card-footer\">" +
+      "<code class=\"catalog-install-command\">apfeller install " + escapeHtml(row.id) + "</code>" +
+      "<a class=\"catalog-source-link\" href=\"" + sourceUrl + "\">Source</a>" +
       "</div>" +
       "";
     return article;
@@ -131,36 +140,39 @@
     });
   }
 
-  function loadDownloadCount(row) {
-    var tag = row.id + "-" + row.revision;
-    var assetName = decodeURIComponent(row.bundle_url.split("/").pop() || "");
-
-    return fetch(RELEASE_API_BASE_URL + encodeURIComponent(tag), { cache: "no-store" })
+  function loadDownloadIndex() {
+    return fetch(RELEASES_API_URL, { cache: "no-store" })
       .then(function (response) {
         if (!response.ok) {
-          return null;
+          return {};
         }
         return response.json();
       })
-      .then(function (release) {
-        var asset;
+      .then(function (releases) {
+        var index = {};
 
-        if (!release || !release.assets || !release.assets.length) {
-          return null;
+        if (!Array.isArray(releases)) {
+          return index;
         }
 
-        asset = release.assets.find(function (entry) {
-          return entry && entry.name === assetName;
-        }) || release.assets[0];
+        releases.forEach(function (release) {
+          var tagName = release && release.tag_name;
+          if (!tagName || !Array.isArray(release.assets)) {
+            return;
+          }
 
-        if (!asset || typeof asset.download_count !== "number") {
-          return null;
-        }
+          release.assets.forEach(function (asset) {
+            if (!asset || !asset.name || typeof asset.download_count !== "number") {
+              return;
+            }
+            index[tagName + "/" + asset.name] = asset.download_count;
+          });
+        });
 
-        return asset.download_count;
+        return index;
       })
       .catch(function () {
-        return null;
+        return {};
       });
   }
 
@@ -181,12 +193,15 @@
         return null;
       }
 
-      return Promise.all(rows.map(function (row) {
-        return loadDownloadCount(row).then(function (downloads) {
-          row.downloads = downloads;
-          return row;
+      return loadDownloadIndex().then(function (downloadIndex) {
+        rows.forEach(function (row) {
+          var tag = row.id + "-" + row.revision;
+          var assetName = decodeURIComponent(row.bundle_url.split("/").pop() || "");
+          var key = tag + "/" + assetName;
+          row.downloads = downloadIndex[key];
         });
-      }));
+        return rows;
+      });
     })
     .then(function (rows) {
       if (!rows) {

@@ -16,21 +16,21 @@
 
 .catalog-grid {
   display: grid;
-  gap: 0.85rem;
-  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr));
 }
 
 .catalog-card,
 .catalog-empty {
-  padding: 0.9rem 1rem;
+  padding: 0.75rem 0.8rem;
   border: 1px solid #d9cfbf;
-  border-radius: 0.85rem;
+  border-radius: 0.75rem;
   background: #fffdf8;
 }
 
 .catalog-card {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.55rem;
 }
 
 .catalog-card h3,
@@ -39,52 +39,45 @@
 }
 
 .catalog-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.8rem;
+  display: grid;
+  gap: 0.35rem;
 }
 
-.catalog-heading {
+.catalog-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.55rem;
   min-width: 0;
 }
 
-.catalog-side {
-  display: grid;
-  gap: 0.4rem;
-  justify-items: end;
-}
-
 .catalog-summary {
-  margin: 0.2rem 0 0;
-  font-weight: 600;
-  font-size: 0.95rem;
-  line-height: 1.35;
-}
-
-.catalog-description {
   margin: 0;
-  font-size: 0.94rem;
-  line-height: 1.45;
-  color: #574d3e;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: #4f473a;
 }
 
 .catalog-meta {
-  display: grid;
-  gap: 0.45rem;
-  font-size: 0.92rem;
-}
-
-.catalog-meta-row {
   display: flex;
-  gap: 0.45rem;
-  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.7rem;
+  font-size: 0.8rem;
 }
 
-.catalog-meta strong {
-  display: inline-block;
-  min-width: 4.9rem;
+.catalog-meta-block {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem 0.35rem;
+  align-items: center;
+}
+
+.catalog-meta-label {
   color: #695a44;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .catalog-pills {
@@ -96,48 +89,58 @@
 
 .catalog-pill {
   display: inline-block;
-  padding: 0.08rem 0.45rem;
+  padding: 0.06rem 0.36rem;
   border-radius: 999px;
   background: #efe5d0;
-  font-size: 0.82rem;
+  font-size: 0.72rem;
 }
 
-.catalog-install {
-  margin-top: 0.15rem;
+.catalog-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  margin-top: 0.1rem;
 }
 
 .catalog-command {
   display: inline-block;
-  padding: 0.15rem 0.45rem;
+  padding: 0.08rem 0.36rem;
   border-radius: 999px;
   background: #f1e7d7;
-  font-size: 0.84rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.catalog-install-command {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: #3d3426;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.catalog-source-link {
+  flex-shrink: 0;
+  font-size: 0.76rem;
 }
 
 .catalog-downloads {
   display: inline-block;
-  padding: 0.15rem 0.5rem;
+  width: fit-content;
+  padding: 0.08rem 0.42rem;
   border-radius: 999px;
   background: #e8f1e7;
-  font-size: 0.82rem;
+  color: #35523b;
+  font-size: 0.72rem;
   white-space: nowrap;
 }
 
 @media (max-width: 640px) {
-  .catalog-card-top {
+  .catalog-title-row,
+  .catalog-card-footer {
+    align-items: flex-start;
     flex-direction: column;
-  }
-
-  .catalog-side {
-    justify-items: start;
-  }
-
-  .catalog-meta-row {
-    display: block;
-  }
-
-  .catalog-meta strong {
-    min-width: 0;
-    margin-bottom: 0.2rem;
   }
 }
