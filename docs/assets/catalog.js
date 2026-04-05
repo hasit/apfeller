@@ -469,6 +469,9 @@
       "</div>" +
       "</div>" +
       "<p class=\"catalog-detail-description\">" + escapeHtml(description) + "</p>" +
+      "<div class=\"catalog-detail-overview\">" +
+      "<section class=\"catalog-detail-section catalog-detail-section-meta\">" +
+      "<h5 class=\"catalog-section-title\">Details</h5>" +
       "<dl class=\"catalog-detail-meta\">" +
       renderDetailMetaRowMarkup("Command", "<code class=\"catalog-detail-code\">" + escapeHtml(manifest.command || row.command) + "</code>") +
       renderDetailMetaRowMarkup("Install", "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>") +
@@ -479,10 +482,13 @@
       renderDetailMetaRowMarkup("Requires", "<span class=\"catalog-detail-value\">" + renderInlineList(requires) + "</span>") +
       renderDetailMetaRowMarkup("Shells", "<span class=\"catalog-detail-value\">" + renderInlineList(shells) + "</span>") +
       "</dl>" +
-      "<section class=\"catalog-detail-section\">" +
+      "</section>" +
+      "<section class=\"catalog-detail-section catalog-detail-section-examples\">" +
       "<h5 class=\"catalog-section-title\">Examples</h5>" +
       renderExamplesMarkup(examples) +
       "</section>" +
+      "</div>" +
+      "<div class=\"catalog-detail-flags\">" +
       "<section class=\"catalog-detail-section\">" +
       "<h5 class=\"catalog-section-title\">Built-in flags</h5>" +
       renderFlagListMarkup(builtinFlags) +
@@ -493,6 +499,7 @@
         ? renderFlagListMarkup(appFlags)
         : "<p class=\"catalog-detail-empty\">No app-specific flags.</p>") +
       "</section>" +
+      "</div>" +
       "</div>"
     );
   }
@@ -510,12 +517,15 @@
       "</div>" +
       "</div>" +
       "<p class=\"catalog-detail-description\">" + escapeHtml(row.description) + "</p>" +
+      "<section class=\"catalog-detail-section catalog-detail-section-meta\">" +
+      "<h5 class=\"catalog-section-title\">Details</h5>" +
       "<dl class=\"catalog-detail-meta\">" +
       renderDetailMetaRowMarkup("Command", "<code class=\"catalog-detail-code\">" + escapeHtml(row.command) + "</code>") +
       renderDetailMetaRowMarkup("Install", "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>") +
       renderDetailMetaRowMarkup("Requires", "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.requires)) + "</span>") +
       renderDetailMetaRowMarkup("Shells", "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.supported_shells)) + "</span>") +
       "</dl>" +
+      "</section>" +
       "<p class=\"catalog-detail-empty\">Could not load the full app manifest right now.</p>" +
       "<p class=\"catalog-detail-source\">Open the source for usage, examples, and app flags: <a href=\"" + sourceUrl + "\">apps/" + escapeHtml(row.id) + "</a></p>" +
       "</div>"
