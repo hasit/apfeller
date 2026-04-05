@@ -82,7 +82,6 @@ emit_runtime_manifest() {
     write_env_assignment APFELLER_OUTPUT_FIELDS "$APP_OUTPUT_FIELDS"
     write_env_assignment APFELLER_HOOK_BUILD_PROMPT "$APP_HOOK_BUILD_PROMPT"
     write_env_assignment APFELLER_HOOK_PRE_RUN "$APP_HOOK_PRE_RUN"
-    write_env_assignment APFELLER_HOOK_LOCAL_RUN "$APP_HOOK_LOCAL_RUN"
   } >"$manifest_path"
 }
 
@@ -141,10 +140,6 @@ for manifest in "$ROOT_DIR"/apps/*/app.toml; do
 
   if [ -n "$APP_HOOK_PRE_RUN" ]; then
     copy_relative_file "$app_dir" "$APP_HOOK_PRE_RUN" "$stage_dir"
-  fi
-
-  if [ -n "$APP_HOOK_LOCAL_RUN" ]; then
-    copy_relative_file "$app_dir" "$APP_HOOK_LOCAL_RUN" "$stage_dir"
   fi
 
   tar -czf "$archive_path" -C "$stage_dir" .

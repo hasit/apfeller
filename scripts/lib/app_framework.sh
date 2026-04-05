@@ -170,7 +170,6 @@ appfw_reset_definition() {
 
   APP_HOOK_BUILD_PROMPT=
   APP_HOOK_PRE_RUN=
-  APP_HOOK_LOCAL_RUN=
 
   APP_SECTION=
   APP_SEEN_LONGS=
@@ -397,9 +396,6 @@ appfw_set_value() {
     hooks:pre_run)
       APP_HOOK_PRE_RUN=$(appfw_decode_string "$raw_value")
       ;;
-    hooks:local_run)
-      APP_HOOK_LOCAL_RUN=$(appfw_decode_string "$raw_value")
-      ;;
     args:name)
       APP_ARG_NAME=$(appfw_decode_string "$raw_value")
       ;;
@@ -455,7 +451,7 @@ appfw_validate_definition() {
   esac
 
   case "$APP_KIND" in
-    ai-command|ai-text|local-command)
+    ai-command|ai-text)
       ;;
     *)
       appfw_fail "Unsupported kind: $APP_KIND"
@@ -471,7 +467,7 @@ appfw_validate_definition() {
   esac
 
   case "$APP_OUTPUT_MODE" in
-    shell_command|text|structured_text|local_passthrough)
+    shell_command|text|structured_text)
       ;;
     *)
       appfw_fail "Unsupported output mode: $APP_OUTPUT_MODE"
@@ -479,7 +475,7 @@ appfw_validate_definition() {
   esac
 
   case "$APP_KIND:$APP_OUTPUT_MODE" in
-    ai-command:shell_command|ai-text:text|ai-text:structured_text|local-command:local_passthrough)
+    ai-command:shell_command|ai-text:text|ai-text:structured_text)
       ;;
     *)
       appfw_fail "Invalid kind/output combination: $APP_KIND + $APP_OUTPUT_MODE"
@@ -493,9 +489,6 @@ appfw_validate_definition() {
       [ -n "$APP_PROMPT_MAX_CONTEXT_TOKENS" ] || appfw_fail "AI apps must define prompt.max_context_tokens"
       [ -n "$APP_PROMPT_MAX_INPUT_BYTES" ] || appfw_fail "AI apps must define prompt.max_input_bytes"
       [ -n "$APP_PROMPT_MAX_OUTPUT_TOKENS" ] || appfw_fail "AI apps must define prompt.max_output_tokens"
-      ;;
-    local-command)
-      [ -n "$APP_HOOK_LOCAL_RUN" ] || appfw_fail "Local command apps must define hooks.local_run"
       ;;
   esac
 
@@ -550,7 +543,6 @@ appfw_validate_definition() {
   appfw_validate_single_line "output.fields" "$APP_OUTPUT_FIELDS"
   appfw_validate_single_line "hooks.build_prompt" "$APP_HOOK_BUILD_PROMPT"
   appfw_validate_single_line "hooks.pre_run" "$APP_HOOK_PRE_RUN"
-  appfw_validate_single_line "hooks.local_run" "$APP_HOOK_LOCAL_RUN"
 }
 
 appfw_load_definition() {

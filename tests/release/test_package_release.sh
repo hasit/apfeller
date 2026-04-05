@@ -30,7 +30,6 @@ PATH="$stub_dir:$PATH" sh "$ROOT_DIR/scripts/package_release.sh" --output-dir "$
 assert_file_exists "$tmp_dir/dist/cmd-0.1.0.tar.gz"
 assert_file_exists "$tmp_dir/dist/define-0.1.0.tar.gz"
 assert_file_exists "$tmp_dir/dist/oneliner-0.1.0.tar.gz"
-assert_file_exists "$tmp_dir/dist/port-0.1.0.tar.gz"
 assert_file_exists "$tmp_dir/dist/apfeller.tar.gz"
 assert_file_exists "$tmp_dir/dist/apfeller-catalog.tsv"
 
@@ -54,5 +53,10 @@ assert_contains "$cmd_contents" './runtime/examples.txt' "app bundles should inc
 assert_not_contains "$cmd_contents" './bin/' "framework app bundles should not ship handwritten entrypoints"
 assert_not_contains "$cmd_contents" './completions/' "framework app bundles should not ship handwritten completions"
 
-port_contents=$(tar -tzf "$tmp_dir/dist/port-0.1.0.tar.gz")
-assert_contains "$port_contents" './hooks/local_run.sh' "local-command bundles should include declared hooks"
+cmd_manifest=$(tar -xOf "$tmp_dir/dist/cmd-0.1.0.tar.gz" ./runtime/manifest.env)
+assert_not_contains "$cmd_manifest" 'APFELLER_HOOK_LOCAL_RUN=' "compiled manifests should not include local-run hooks"
+
+if awk -F '\t' 'NR > 1 && $1 == "port" { found = 1 } END { exit found ? 0 : 1 }' "$tmp_dir/dist/apfeller-catalog.tsv"; then
+  printf '%s\n' "release catalog should no longer include port" >&2
+  exit 1
+fi

@@ -14,7 +14,7 @@ keys, and no cloud round-trip.
 It installs a lightweight manager first, then lets users opt into focused apps.
 The AI apps are intentionally designed for small inputs, small outputs, and
 instant single-turn results so they fit apfel's fixed 4,096-token combined
-context window. `port` is included as a simple local utility.
+context window.
 
 ## Install
 
@@ -34,10 +34,6 @@ apfeller install cmd oneliner
 - `cmd`: natural language to a single shell command via `apfel`
 - `oneliner`: natural language to a compact UNIX pipeline via `apfel`
 - `define`: tiny multilingual dictionary lookup via `apfel`
-
-## Local Utility
-
-- `port`: show which process is using a local port
 
 ## Docs
 

@@ -16,7 +16,6 @@ jobs:
           tests/apps/test_cmd.sh
           tests/apps/test_oneliner.sh
           tests/apps/test_define.sh
-          tests/apps/test_port.sh
           tests/apps/test_context_budget.sh
       - name: Public copy sanity check
         run: tests/docs/test_public_copy.sh

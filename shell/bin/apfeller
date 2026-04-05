@@ -461,7 +461,6 @@ load_runtime_manifest() {
   APFELLER_OUTPUT_FIELDS=
   APFELLER_HOOK_BUILD_PROMPT=
   APFELLER_HOOK_PRE_RUN=
-  APFELLER_HOOK_LOCAL_RUN=
 
   # shellcheck disable=SC1090
   . "$APP_RUNTIME_MANIFEST"
@@ -1278,35 +1277,28 @@ cmd_run_app() {
     runtime_call_hook "$app_dir" "$APFELLER_HOOK_PRE_RUN"
   fi
 
+  if [ -n "$APFELLER_HOOK_BUILD_PROMPT" ]; then
+    prompt=$(runtime_call_hook "$app_dir" "$APFELLER_HOOK_BUILD_PROMPT")
+  else
+    prompt=$(runtime_render_prompt)
+  fi
+
+  apfeller_require_context_budget \
+    "$APFELLER_APP_COMMAND" \
+    "$APFELLER_PROMPT_MAX_CONTEXT_TOKENS" \
+    "$APFELLER_PROMPT_MAX_INPUT_BYTES" \
+    "$APFELLER_PROMPT_MAX_OUTPUT_TOKENS" \
+    "$prompt" || return $?
+
   case "$APFELLER_OUTPUT_MODE" in
-    local_passthrough)
-      runtime_call_hook "$app_dir" "$APFELLER_HOOK_LOCAL_RUN"
+    shell_command)
+      runtime_emit_shell_command "$prompt"
       ;;
-    shell_command|text|structured_text)
-      if [ -n "$APFELLER_HOOK_BUILD_PROMPT" ]; then
-        prompt=$(runtime_call_hook "$app_dir" "$APFELLER_HOOK_BUILD_PROMPT")
-      else
-        prompt=$(runtime_render_prompt)
-      fi
-
-      apfeller_require_context_budget \
-        "$APFELLER_APP_COMMAND" \
-        "$APFELLER_PROMPT_MAX_CONTEXT_TOKENS" \
-        "$APFELLER_PROMPT_MAX_INPUT_BYTES" \
-        "$APFELLER_PROMPT_MAX_OUTPUT_TOKENS" \
-        "$prompt" || return $?
-
-      case "$APFELLER_OUTPUT_MODE" in
-        shell_command)
-          runtime_emit_shell_command "$prompt"
-          ;;
-        text)
-          runtime_emit_text "$prompt"
-          ;;
-        structured_text)
-          runtime_emit_structured_text "$prompt"
-          ;;
-      esac
+    text)
+      runtime_emit_text "$prompt"
+      ;;
+    structured_text)
+      runtime_emit_structured_text "$prompt"
       ;;
     *)
       fail "Unsupported output mode: $APFELLER_OUTPUT_MODE"

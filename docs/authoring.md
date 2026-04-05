@@ -10,81 +10,90 @@ and fish/zsh completions.
 
 ## Layout
 
-- `apps/<id>/app.toml`
-- `apps/<id>/hooks/*.sh` when the app needs hooks
+- `apps/<id>/app.toml`: the single source of truth for the app definition.
+- `apps/<id>/hooks/*.sh`: optional executable hooks used for validation or
+  prompt building.
 
 ## Required Top-Level Fields
 
-- `id`
-- `version`
-- `summary`
-- `description`
-- `command`
-- `kind`
-- `requires_commands`
-- `supported_shells`
+- `id`: stable app identifier used in the catalog and `apfeller install <id>`.
+- `version`: app release version used for packaging and store paths.
+- `summary`: short one-line description shown in listings.
+- `description`: fuller description shown in help and `apfeller info`.
+- `command`: installed command name users run from the shell.
+- `kind`: framework behavior family for the app.
+- `requires_commands`: external commands the app depends on, such as `apfel`
+  or `pbcopy`.
+- `supported_shells`: shells that should receive generated completions.
 
 Supported `kind` values:
 
-- `ai-command`
-- `ai-text`
-- `local-command`
+- `ai-command`: asks apfel for one shell command and supports `--copy` and
+  `--execute`.
+- `ai-text`: asks apfel for plain text or structured text and supports
+  `--copy`.
 
 ## Required Sections
 
 `[help]`
 
-- `usage`
-- `examples`
+- `usage`: one-line usage string shown in generated `--help`.
+- `examples`: example invocations shown in generated `--help`.
 
 `[input]`
 
-- `mode = "none" | "single" | "rest"`
-- `name`
-- `required = true | false`
+- `mode = "none" | "single" | "rest"`: how positional input is consumed.
+  `none` means no positional input, `single` means exactly one value,
+  `rest` means all remaining words joined together.
+- `name`: human label for the positional input concept.
+- `required = true | false`: whether positional input must be present.
 
 `[output]`
 
-- `mode = "shell_command" | "text" | "structured_text" | "local_passthrough"`
-- `fields = [...]` is required only for `structured_text`
+- `mode = "shell_command" | "text" | "structured_text"`:
+  how the framework should run and format the result.
+- `fields = [...]`: ordered field names expected from the model when
+  `mode = "structured_text"`.
 
 `[prompt]` for AI apps
 
-- `system`
-- `template`
-- `max_context_tokens`
-- `max_input_bytes`
-- `max_output_tokens`
+- `system`: system prompt sent to apfel.
+- `template`: user prompt template after placeholder substitution.
+- `max_context_tokens`: total model window budget, normally `4096`.
+- `max_input_bytes`: maximum rendered prompt size accepted before calling
+  apfel.
+- `max_output_tokens`: maximum number of tokens requested from apfel.
 
 `[hooks]` for hook-backed apps
 
-- `build_prompt` optional
-- `pre_run` optional
-- `local_run` required for `local-command`
+- `build_prompt` optional: executable that prints the final prompt instead of
+  using `prompt.template`.
+- `pre_run` optional: executable that validates or prepares before the main
+  run.
 
 `[[args]]` blocks are optional and support:
 
-- `name`
-- `type = "flag" | "string" | "integer" | "enum"`
-- `long`
-- `short` optional
-- `description`
-- `default` optional
-- `choices` optional and required for `enum`
+- `name`: stable internal arg name used in templates and hook env vars.
+- `type = "flag" | "string" | "integer" | "enum"`: how the framework parses
+  the value.
+- `long`: long option name without the leading `--`.
+- `short` optional: one-letter short option without the leading `-`.
+- `description`: help and completion text for the option.
+- `default` optional: value used when the user does not pass the option.
+- `choices` optional and required for `enum`: allowed values for enum args.
 
 ## Valid Kind / Output Pairs
 
 - `ai-command` + `shell_command`
 - `ai-text` + `text`
 - `ai-text` + `structured_text`
-- `local-command` + `local_passthrough`
 
 ## Prompt Templates
 
 Prompt templates use simple placeholder substitution only:
 
-- `{{input}}`
-- `{{arg.<name>}}`
+- `{{input}}`: replaced with the parsed positional input.
+- `{{arg.<name>}}`: replaced with the parsed value of a declared arg.
 
 There are no loops, nested expressions, or conditionals in v1.
 
@@ -92,15 +101,14 @@ There are no loops, nested expressions, or conditionals in v1.
 
 Hooks are executed, not sourced. `apfeller` passes:
 
-- `APFELLER_APP_DIR`
-- `APFELLER_INPUT`
-- `APFELLER_ARG_<UPPER_SNAKE_NAME>` for each declared arg
+- `APFELLER_APP_DIR`: absolute path to the unpacked app bundle.
+- `APFELLER_INPUT`: parsed positional input after framework validation.
+- `APFELLER_ARG_<UPPER_SNAKE_NAME>`: parsed value for each declared arg.
 
 Hook behavior:
 
-- `build_prompt` writes the final user prompt to stdout
-- `pre_run` validates or prepares and exits non-zero on failure
-- `local_run` performs the local command execution and owns stdout/stderr
+- `build_prompt` writes the final user prompt to stdout.
+- `pre_run` validates or prepares and exits non-zero on failure.
 
 ## 4096-Token Guard
 
@@ -118,7 +126,6 @@ Runtime also rejects oversized requests before calling apfel.
 - `cmd`: `ai-command`
 - `oneliner`: `ai-command`
 - `define`: `ai-text`
-- `port`: `local-command`
 
 ## Release Packaging
 

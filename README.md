@@ -8,14 +8,14 @@ keys, and no cloud round-trip.
 It installs a lightweight manager first, then lets users opt into focused apps.
 The AI apps are intentionally designed for small inputs, small outputs, and
 instant single-turn results so they fit apfel's fixed 4,096-token combined
-context window. `port` is included as a simple local utility.
+context window.
 
 ## What v1 includes
 
 - A POSIX `sh`-based `apfeller` manager
 - A shell app framework with author-facing `apps/<id>/app.toml` definitions
 - Compiled runtime manifests plus generated wrappers and completions at install time
-- Portable POSIX shell app bundles with optional hook scripts
+- Portable POSIX shell app bundles with optional prompt and validation hooks
 - Fish and zsh integration
 - A one-line installer for the manager
 
@@ -53,10 +53,6 @@ apfeller doctor
 - `oneliner`: natural language to a compact UNIX pipeline via `apfel`
 - `define`: tiny multilingual dictionary lookup via `apfel`
 
-## Local Utility
-
-- `port`: show which process is using a local port
-
 ## Development
 
 Prerequisites:
@@ -70,7 +66,6 @@ Validate locally:
 tests/apps/test_cmd.sh
 tests/apps/test_oneliner.sh
 tests/apps/test_define.sh
-tests/apps/test_port.sh
 tests/apps/test_context_budget.sh
 tests/docs/test_public_copy.sh
 tests/install/test_install.sh

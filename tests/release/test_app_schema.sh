@@ -162,3 +162,98 @@ run_invalid_case \
   "unsupported nested section" \
   'printf "%s\n" "[help.extra]" >>"$1/apps/cmd/app.toml"' \
   "Unsupported section syntax"
+
+run_invalid_case \
+  "removed local-command kind" \
+  'cat >"$1/apps/cmd/app.toml" <<'"'"'EOF'"'"'
+id = "cmd"
+version = "0.1.0"
+summary = "broken"
+description = "broken"
+command = "cmd"
+kind = "local-command"
+requires_commands = ["apfel"]
+supported_shells = ["fish", "zsh"]
+
+[help]
+usage = "cmd TEST"
+examples = ["cmd test"]
+
+[input]
+mode = "rest"
+name = "request"
+required = true
+
+[output]
+mode = "shell_command"
+EOF' \
+  "Unsupported kind"
+
+run_invalid_case \
+  "removed local_passthrough output" \
+  'cat >"$1/apps/cmd/app.toml" <<'"'"'EOF'"'"'
+id = "cmd"
+version = "0.1.0"
+summary = "broken"
+description = "broken"
+command = "cmd"
+kind = "ai-command"
+requires_commands = ["apfel"]
+supported_shells = ["fish", "zsh"]
+
+[help]
+usage = "cmd TEST"
+examples = ["cmd test"]
+
+[input]
+mode = "rest"
+name = "request"
+required = true
+
+[prompt]
+system = "broken"
+template = "{{input}}"
+max_context_tokens = 4096
+max_input_bytes = 100
+max_output_tokens = 50
+
+[output]
+mode = "local_passthrough"
+EOF' \
+  "Unsupported output mode"
+
+run_invalid_case \
+  "removed hooks.local_run key" \
+  'cat >"$1/apps/cmd/app.toml" <<'"'"'EOF'"'"'
+id = "cmd"
+version = "0.1.0"
+summary = "broken"
+description = "broken"
+command = "cmd"
+kind = "ai-command"
+requires_commands = ["apfel"]
+supported_shells = ["fish", "zsh"]
+
+[help]
+usage = "cmd TEST"
+examples = ["cmd test"]
+
+[input]
+mode = "rest"
+name = "request"
+required = true
+
+[prompt]
+system = "broken"
+template = "{{input}}"
+max_context_tokens = 4096
+max_input_bytes = 100
+max_output_tokens = 50
+
+[output]
+mode = "shell_command"
+
+[hooks]
+local_run = "hooks/local_run.sh"
+EOF' \
+  "Unsupported key hooks.local_run"
