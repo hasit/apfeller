@@ -224,6 +224,63 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+stdout_can_render_table() {
+  [ -t 1 ] || return 1
+  [ "${TERM:-}" != "dumb" ] || return 1
+}
+
+render_tsv_table() {
+  table_path=$1
+
+  awk -F '\t' '
+    {
+      rows[NR] = $0
+      if (NF > max_fields) {
+        max_fields = NF
+      }
+      for (i = 1; i <= NF; i++) {
+        if (length($i) > widths[i]) {
+          widths[i] = length($i)
+        }
+      }
+    }
+    END {
+      for (row = 1; row <= NR; row++) {
+        split(rows[row], fields, FS)
+        line = ""
+        for (i = 1; i <= max_fields; i++) {
+          value = fields[i]
+          if (i == max_fields) {
+            line = line value
+          } else {
+            line = line sprintf("%-*s  ", widths[i], value)
+          }
+        }
+        print line
+      }
+    }
+  ' "$table_path"
+}
+
+emit_list_output() {
+  rows_path=$1
+  header_app=$2
+  header_second=$3
+  header_status=$4
+  header_fourth=$5
+
+  if ! stdout_can_render_table; then
+    cat "$rows_path"
+    return 0
+  fi
+
+  table_path=$(mktemp "${TMPDIR:-/tmp}/apfeller-list.XXXXXX")
+  printf '%s\t%s\t%s\t%s\n' "$header_app" "$header_second" "$header_status" "$header_fourth" >"$table_path"
+  cat "$rows_path" >>"$table_path"
+  render_tsv_table "$table_path"
+  rm -f "$table_path"
+}
+
 require_tools() {
   for tool in "$@"; do
     command_exists "$tool" || fail "apfeller needs $tool to do that. Install $tool and try again."
@@ -1724,6 +1781,7 @@ cmd_list() {
     fi
 
     catalog_file=$(fetch_catalog)
+    rows_path=$(mktemp "${TMPDIR:-/tmp}/apfeller-list.XXXXXX")
 
     while IFS="$TAB" read -r app_id installed_revision command_name installed_at; do
       [ "$app_id" = "id" ] && continue
@@ -1739,7 +1797,10 @@ cmd_list() {
           printf '%s\t%s\tlocal-only\t\n' "$app_id" "$installed_revision"
           ;;
       esac
-    done <"$STATE_PATH"
+    done <"$STATE_PATH" >"$rows_path"
+
+    emit_list_output "$rows_path" "APP" "INSTALLED" "STATUS" "PUBLISHED"
+    rm -f "$rows_path"
 
     return 0
   fi
@@ -1747,6 +1808,7 @@ cmd_list() {
   [ $# -eq 0 ] || fail "Usage: apfeller list [--installed]"
 
   catalog_file=$(fetch_catalog)
+  rows_path=$(mktemp "${TMPDIR:-/tmp}/apfeller-list.XXXXXX")
   awk -F '\t' 'NR > 1 { print $1 "\t" $2 "\t" $3 }' "$catalog_file" |
     while IFS="$TAB" read -r app_id revision summary; do
       installed_revision=$(state_get_field "$app_id" 2)
@@ -1758,7 +1820,10 @@ cmd_list() {
         status="update-available"
       fi
       printf '%s\t%s\t%s\t%s\n' "$app_id" "$revision" "$status" "$summary"
-    done
+    done >"$rows_path"
+
+  emit_list_output "$rows_path" "APP" "REVISION" "STATUS" "SUMMARY"
+  rm -f "$rows_path"
 }
 
 cmd_info() {

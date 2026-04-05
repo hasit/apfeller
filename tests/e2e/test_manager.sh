@@ -11,6 +11,15 @@ BASE_PATH=/usr/bin:/bin:/usr/sbin:/sbin
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT INT TERM HUP
 
+sanitize_pty_output() {
+  perl -pe 's/\e\[[0-9;]*[A-Za-z]//g; s/\r/\n/g; s/[\x04\x08]//g; s/\^D//g'
+}
+
+run_pty_script() {
+  script_path=$1
+  /usr/bin/script -q /dev/null /bin/sh "$script_path" 2>/dev/null | sanitize_pty_output
+}
+
 setup_framework_env "$ROOT_DIR" "$tmp_dir"
 catalog_path="$TEST_CATALOG_PATH"
 fixture_cmd_revision=$(awk -F '\t' 'NR > 1 && $1 == "fixture-cmd" { print $2; exit }' "$catalog_path")
@@ -63,6 +72,35 @@ installed_output=$(framework_run_manager list --installed)
 assert_contains "$installed_output" "fixture-cmd	$fixture_cmd_revision	installed	$fixture_cmd_revision" "installed listing should include fixture-cmd and the catalog revision"
 assert_contains "$installed_output" "fixture-define	$fixture_define_revision	installed	$fixture_define_revision" "installed listing should include fixture-define and the catalog revision"
 assert_contains "$installed_output" "fixture-oneliner	$fixture_oneliner_revision	installed	$fixture_oneliner_revision" "installed listing should include fixture-oneliner and the catalog revision"
+
+tty_list_runner="$tmp_dir/list-tty.sh"
+cat >"$tty_list_runner" <<EOF
+#!/bin/sh
+set -eu
+HOME=$TEST_HOME_DIR
+PATH=$TEST_HOME_DIR/.local/bin:$TEST_STUB_DIR:$BASE_PATH
+TERM=xterm-256color
+APFELLER_SHELL=zsh
+APFELLER_CATALOG_URL=file://$TEST_CATALOG_PATH
+APFELLER_INSTALL_URL=file://$TEST_DIST_DIR/apfeller.tar.gz
+export HOME PATH TERM APFELLER_SHELL APFELLER_CATALOG_URL APFELLER_INSTALL_URL
+apfeller list
+printf '\n'
+apfeller list --installed
+EOF
+chmod +x "$tty_list_runner"
+
+tty_list_output=$(run_pty_script "$tty_list_runner")
+printf '%s\n' "$tty_list_output" | grep -Eq '^APP[[:space:]]+REVISION[[:space:]]+STATUS[[:space:]]+SUMMARY$' || {
+  printf '%s\n' "expected tty list output to render column headers" >&2
+  exit 1
+}
+printf '%s\n' "$tty_list_output" | grep -Eq '^APP[[:space:]]+INSTALLED[[:space:]]+STATUS[[:space:]]+PUBLISHED$' || {
+  printf '%s\n' "expected tty installed list output to render column headers" >&2
+  exit 1
+}
+assert_contains "$tty_list_output" 'fixture-cmd' "tty list output should include installed apps"
+assert_not_contains "$tty_list_output" "$(printf 'fixture-cmd\t')" "tty list output should render aligned columns instead of raw tabs"
 
 repeat_install_output=$(APFELLER_SKIP_AUTO_SELF_UPDATE=1 framework_run_manager install fixture-cmd)
 assert_contains "$repeat_install_output" "Already installed fixture-cmd $fixture_cmd_revision" "install should skip apps that are already current"
