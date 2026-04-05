@@ -39,18 +39,16 @@ Prerequisites:
 
 Validate locally:
 
-```sh
-tests/apps/test_cmd.sh
-tests/apps/test_oneliner.sh
-tests/apps/test_define.sh
-tests/apps/test_context_budget.sh
-tests/docs/test_public_copy.sh
-tests/install/test_install.sh
-tests/release/test_package_release.sh
-tests/release/test_app_schema.sh
-tests/e2e/test_manager.sh
-tests/e2e/test_checksum_mismatch.sh
-```
+- `tests/apps/test_cmd.sh`
+- `tests/apps/test_oneliner.sh`
+- `tests/apps/test_define.sh`
+- `tests/apps/test_context_budget.sh`
+- `tests/docs/test_public_copy.sh`
+- `tests/install/test_install.sh`
+- `tests/release/test_package_release.sh`
+- `tests/release/test_app_schema.sh`
+- `tests/e2e/test_manager.sh`
+- `tests/e2e/test_checksum_mismatch.sh`
 
 ## Packaging
 

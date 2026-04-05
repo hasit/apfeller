@@ -90,3 +90,34 @@ assert_contains "$write_page" 'scripts/package_catalog.sh --output-dir dist --bu
 assert_contains "$write_page" '[Browse the catalog](../catalog/)' "authoring page should use explicit guide labels"
 assert_not_contains "$write_page" 'workflow_dispatch' "authoring page should not document the release workflow"
 assert_not_contains "$write_page" 'Publish' "authoring page should stay focused on writing and testing"
+
+find "$ROOT_DIR" -name '*.md' -not -path '*/.git/*' -print | while IFS= read -r markdown_path; do
+  if ! awk '
+    /^```(sh|shell|bash|zsh|fish)[[:space:]]*$/ {
+      in_block = 1
+      command_lines = 0
+      next
+    }
+    in_block && /^```[[:space:]]*$/ {
+      if (command_lines > 1) {
+        exit 1
+      }
+      in_block = 0
+      command_lines = 0
+      next
+    }
+    in_block {
+      if ($0 ~ /[^[:space:]]/) {
+        command_lines++
+      }
+    }
+    END {
+      if (in_block && command_lines > 1) {
+        exit 1
+      }
+    }
+  ' "$markdown_path"; then
+    printf '%s\n' "markdown file contains a multi-command shell code block: $markdown_path" >&2
+    exit 1
+  fi
+done

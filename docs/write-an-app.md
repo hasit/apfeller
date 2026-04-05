@@ -123,6 +123,11 @@ sh scripts/package_catalog.sh --output-dir dist --bundle-base-url "file://$PWD/d
 
 ```sh
 APFELLER_CATALOG_URL="file://$PWD/dist/apfeller-catalog.tsv" apfeller list
+```
+
+Install your app from that same local catalog:
+
+```sh
 APFELLER_CATALOG_URL="file://$PWD/dist/apfeller-catalog.tsv" apfeller install folder-brief
 ```
 

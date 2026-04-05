@@ -39,13 +39,23 @@ Verify that the manager is available:
 
 ```sh
 apfeller --version
+```
+
+Then run a quick health check:
+
+```sh
 apfeller doctor
 ```
 
-Then browse the catalog and install your first app:
+Browse the catalog:
 
 ```sh
 apfeller list
+```
+
+Install your first app:
+
+```sh
 apfeller install <app>
 ```
 
