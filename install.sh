@@ -17,6 +17,34 @@ ensure_dir() {
   mkdir -p "$1"
 }
 
+print_missing_release_asset_hint() {
+  url=$1
+  asset_name=$2
+  override_var=$3
+
+  case "$url" in
+    https://github.com/*/releases/latest/download/*|http://github.com/*/releases/latest/download/*)
+      printf '%s\n' "No published GitHub release asset was found for $asset_name." >&2
+      printf '%s\n' "Publish a release containing $asset_name, or set $override_var to a direct URL." >&2
+      ;;
+  esac
+}
+
+download_to_path() {
+  url=$1
+  output_path=$2
+  label=$3
+  asset_name=$4
+  override_var=$5
+
+  curl -fsSL "$url" -o "$output_path" && return 0
+  status=$?
+
+  printf '%s\n' "Failed to download $label from $url" >&2
+  print_missing_release_asset_hint "$url" "$asset_name" "$override_var"
+  return "$status"
+}
+
 write_fish_conf() {
   ensure_dir "$(dirname "$FISH_CONF_PATH")"
   cat >"$FISH_CONF_PATH" <<EOF
@@ -137,7 +165,7 @@ ensure_dir "$LOCAL_BIN_DIR"
 ensure_dir "$CONFIG_DIR"
 ensure_dir "$extract_dir"
 
-curl -fsSL "$asset_url" -o "$archive_path"
+download_to_path "$asset_url" "$archive_path" "manager archive" "$ASSET_NAME" "APFELLER_INSTALL_URL"
 tar -xzf "$archive_path" -C "$extract_dir"
 
 cp "$extract_dir/bin/apfeller" "$LOCAL_BIN_DIR/apfeller"

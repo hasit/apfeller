@@ -61,6 +61,34 @@ require_tools() {
   done
 }
 
+print_missing_release_asset_hint() {
+  url=$1
+  asset_name=$2
+  override_var=$3
+
+  case "$url" in
+    https://github.com/*/releases/latest/download/*|http://github.com/*/releases/latest/download/*)
+      printf '%s\n' "No published GitHub release asset was found for $asset_name." >&2
+      printf '%s\n' "Publish a release containing $asset_name, or set $override_var to a direct URL." >&2
+      ;;
+  esac
+}
+
+download_to_path() {
+  url=$1
+  output_path=$2
+  label=$3
+  asset_name=$4
+  override_var=$5
+
+  curl -fsSL "$url" -o "$output_path" && return 0
+  status=$?
+
+  printf '%s\n' "Failed to download $label from $url" >&2
+  print_missing_release_asset_hint "$url" "$asset_name" "$override_var"
+  return "$status"
+}
+
 shell_quote() {
   printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
 }
@@ -194,7 +222,7 @@ fetch_catalog() {
   require_tools curl
   if [ -z "$CATALOG_CACHE_PATH" ]; then
     CATALOG_CACHE_PATH="$TMP_DIR/apfeller-catalog.tsv"
-    curl -fsSL "$CATALOG_URL" -o "$CATALOG_CACHE_PATH"
+    download_to_path "$CATALOG_URL" "$CATALOG_CACHE_PATH" "app catalog" "apfeller-catalog.tsv" "APFELLER_CATALOG_URL"
   fi
   printf '%s\n' "$CATALOG_CACHE_PATH"
 }
@@ -368,7 +396,7 @@ install_manager_from_archive() {
   rm -rf "$extract_dir"
   mkdir -p "$extract_dir"
 
-  curl -fsSL "$archive_url" -o "$archive_path"
+  download_to_path "$archive_url" "$archive_path" "manager archive" "$MANAGER_ASSET_NAME" "APFELLER_INSTALL_URL"
   tar -xzf "$archive_path" -C "$extract_dir"
 
   [ -f "$extract_dir/bin/apfeller" ] || fail "Manager archive is missing bin/apfeller"
@@ -651,7 +679,7 @@ install_app() {
   ensure_dir "$(dirname "$store_path")"
   ensure_command_slot_available "$command_name"
 
-  curl -fsSL "$archive_url" -o "$archive_path"
+  download_to_path "$archive_url" "$archive_path" "$CAT_ID app bundle" "$CAT_BUNDLE_ARCHIVE" "APFELLER_RELEASE_BASE_URL"
   actual_sha=$(shasum -a 256 "$archive_path" | awk '{print $1}')
   if [ "$actual_sha" != "$CAT_SHA256" ]; then
     fail "Checksum mismatch for $CAT_ID: expected $CAT_SHA256, got $actual_sha"

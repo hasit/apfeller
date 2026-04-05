@@ -66,5 +66,33 @@ test_zsh_install() {
   assert_eq "1" "$count" "managed zsh block should remain idempotent"
 }
 
+test_missing_release_asset_message() {
+  tmp_dir=$(mktemp -d)
+  stub_dir="$tmp_dir/bin"
+  mkdir -p "$stub_dir"
+  cp "$ROOT_DIR/tests/helpers/curl_404_stub.sh" "$stub_dir/curl"
+  chmod +x "$stub_dir/curl"
+
+  set +e
+  output=$(
+    HOME="$tmp_dir/home" \
+    PATH="$stub_dir:$PATH" \
+    APFELLER_INSTALL_URL="https://github.com/hasit/apfeller/releases/latest/download/apfeller.tar.gz" \
+    sh "$ROOT_DIR/install.sh" 2>&1
+  )
+  status=$?
+  set -e
+
+  if [ "$status" -eq 0 ]; then
+    printf '%s\n' "expected install.sh to fail when the manager release asset is missing" >&2
+    exit 1
+  fi
+
+  assert_contains "$output" 'Failed to download manager archive' "install should identify the missing manager asset"
+  assert_contains "$output" 'No published GitHub release asset was found for apfeller.tar.gz.' "install should explain the release asset requirement"
+  assert_contains "$output" 'APFELLER_INSTALL_URL' "install should point to the override variable"
+}
+
 test_fish_install
 test_zsh_install
+test_missing_release_asset_message
