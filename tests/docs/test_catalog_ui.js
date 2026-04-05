@@ -199,9 +199,10 @@ assert(downloadTotals.cmd === 11, "download totals should sum bundle downloads a
 assert(downloadTotals["log-digest"] === 3, "download totals should support app ids with hyphens");
 assert(typeof downloadTotals.cmd === "number" && downloadTotals.cmd !== 110, "download totals should ignore non-bundle assets");
 
-assert(api.nextExpandedCardId("", "cmd") === "cmd", "opening a closed card should expand it");
-assert(api.nextExpandedCardId("cmd", "cmd") === "", "clicking the open card should collapse it");
-assert(api.nextExpandedCardId("cmd", "define") === "define", "opening a new card should replace the previous one");
+assert(api.constants.TABLE_COLUMN_COUNT === 7, "catalog table should expose the expected number of columns");
+assert(api.nextExpandedRowId("", "cmd") === "cmd", "opening a closed row should expand it");
+assert(api.nextExpandedRowId("cmd", "cmd") === "", "clicking the open row should collapse it");
+assert(api.nextExpandedRowId("cmd", "define") === "define", "opening a new row should replace the previous one");
 
 const row = {
   id: "cmd",
@@ -214,12 +215,19 @@ const row = {
   downloads: 0
 };
 
-const collapsedMarkup = api.renderCollapsedCardMarkup(row);
-assert(collapsedMarkup.includes("Turn natural language into a shell command."), "collapsed cards should keep the short summary");
-assert(!collapsedMarkup.includes(row.description), "collapsed cards should not include the long description");
-assert(!collapsedMarkup.includes("apfeller install cmd"), "collapsed cards should not include the install command");
+const headerMarkup = api.renderTableHeaderMarkup();
+assert(headerMarkup.includes("catalog-col-app"), "catalog table header should include the app column");
+assert(headerMarkup.includes(">Downloads<"), "catalog table header should include the downloads column");
 
-const collapsedWithDownloads = api.renderCollapsedCardMarkup({
+const summaryCells = api.renderSummaryRowCellsMarkup(row);
+assert(summaryCells.includes("catalog-row-toggle"), "collapsed rows should render a disclosure control");
+assert(summaryCells.includes("aria-controls=\"catalog-details-cmd\""), "collapsed rows should point at their detail row");
+assert(summaryCells.includes("Turn natural language into a shell command."), "collapsed rows should keep the short summary");
+assert(summaryCells.includes(">Source<"), "collapsed rows should include the source link");
+assert(!summaryCells.includes(row.description), "collapsed rows should not include the long description");
+assert(!summaryCells.includes("apfeller install cmd"), "collapsed rows should not include the install command");
+
+const summaryWithDownloads = api.renderSummaryRowCellsMarkup({
   id: "define",
   command: "define",
   summary: "Define a word or phrase.",
@@ -229,8 +237,13 @@ const collapsedWithDownloads = api.renderCollapsedCardMarkup({
   kind: "ai-text",
   downloads: 12
 });
-assert(collapsedWithDownloads.includes("12 downloads"), "collapsed cards should use generic download badge copy");
-assert(!collapsedWithDownloads.includes("GitHub downloads"), "collapsed cards should not mention GitHub in the download badge");
+assert(summaryWithDownloads.includes("12 downloads"), "collapsed rows should use generic download count copy");
+assert(!summaryWithDownloads.includes("GitHub downloads"), "collapsed rows should not mention GitHub in the download text");
+
+const detailRowMarkup = api.renderDetailRowMarkup("catalog-details-cmd", "<div>detail body</div>");
+assert(detailRowMarkup.includes("catalog-detail-row"), "expanded details should render as a dedicated detail row");
+assert(detailRowMarkup.includes("colspan=\"7\""), "detail rows should span the full table width");
+assert(detailRowMarkup.includes("detail body"), "detail row wrapper should preserve the provided detail markup");
 
 const cmdDetails = api.renderDetailMarkup(row, cmd, "https://github.com/hasit/apfeller-apps/tree/main/apps/cmd");
 assert(cmdDetails.includes("apfeller install cmd"), "expanded details should include the install command");

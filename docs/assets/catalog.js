@@ -4,6 +4,7 @@
   var APP_SOURCE_BASE_URL = "https://github.com/hasit/apfeller-apps/tree/main/apps/";
   var APP_MANIFEST_BASE_URL = "https://raw.githubusercontent.com/hasit/apfeller-apps/main/apps/";
   var RELEASES_API_URL = "https://api.github.com/repos/hasit/apfeller-apps/releases?per_page=100";
+  var TABLE_COLUMN_COUNT = 7;
 
   function escapeHtml(value) {
     return String(value)
@@ -64,9 +65,11 @@
     return lines.slice(1).map(function (line) {
       var values = line.split("\t");
       var row = {};
+
       headers.forEach(function (header, index) {
         row[header] = values[index] || "";
       });
+
       return row;
     });
   }
@@ -267,22 +270,12 @@
     return flags;
   }
 
-  function nextExpandedCardId(currentId, targetId) {
+  function nextExpandedRowId(currentId, targetId) {
     if (currentId === targetId) {
       return "";
     }
 
     return targetId;
-  }
-
-  function renderPills(values) {
-    if (!values.length) {
-      return "<span class=\"catalog-pill\">none</span>";
-    }
-
-    return values.map(function (value) {
-      return "<span class=\"catalog-pill\">" + escapeHtml(value) + "</span>";
-    }).join("");
   }
 
   function detailIdForRow(row) {
@@ -297,33 +290,59 @@
     return APP_MANIFEST_BASE_URL + encodeURIComponent(row.id) + "/app.toml";
   }
 
-  function renderCollapsedCardMarkup(row) {
-    var downloads = row.downloads > 0
-      ? "<span class=\"catalog-downloads\">" + escapeHtml(formatDownloads(row.downloads)) + "</span>"
-      : "";
+  function renderInlineList(values) {
+    return escapeHtml(values.length ? values.join(", ") : "none");
+  }
+
+  function renderTableHeaderMarkup() {
+    return (
+      "<thead>" +
+      "<tr>" +
+      "<th scope=\"col\" class=\"catalog-col-app\">App</th>" +
+      "<th scope=\"col\" class=\"catalog-col-command\">Command</th>" +
+      "<th scope=\"col\" class=\"catalog-col-summary\">Summary</th>" +
+      "<th scope=\"col\" class=\"catalog-col-requires\">Requires</th>" +
+      "<th scope=\"col\" class=\"catalog-col-shells\">Shells</th>" +
+      "<th scope=\"col\" class=\"catalog-col-downloads\">Downloads</th>" +
+      "<th scope=\"col\" class=\"catalog-col-source\">Source</th>" +
+      "</tr>" +
+      "</thead>"
+    );
+  }
+
+  function renderSummaryRowCellsMarkup(row) {
+    var detailId = detailIdForRow(row);
+    var downloads = row.downloads > 0 ? escapeHtml(formatDownloads(row.downloads)) : "";
 
     return (
-      "<div class=\"catalog-card-top\">" +
-      "<div class=\"catalog-title-row\">" +
-      "<h3>" + escapeHtml(row.id) + "</h3>" +
-      "<div class=\"catalog-title-side\">" +
-      "<code class=\"catalog-command\">" + escapeHtml(row.command) + "</code>" +
+      "<td class=\"catalog-col-app\">" +
+      "<button class=\"catalog-row-toggle\" type=\"button\" aria-expanded=\"false\" aria-controls=\"" + detailId + "\" aria-label=\"Show details for " + escapeHtml(row.id) + "\">" +
       "<span class=\"catalog-chevron\" aria-hidden=\"true\">▾</span>" +
-      "</div>" +
-      "</div>" +
-      downloads +
-      "</div>" +
-      "<p class=\"catalog-summary\">" + escapeHtml(row.summary) + "</p>" +
-      "<div class=\"catalog-meta\">" +
-      "<div class=\"catalog-meta-block\">" +
-      "<span class=\"catalog-meta-label\">Requires</span>" +
-      "<span class=\"catalog-pills\">" + renderPills(splitCsv(row.requires)) + "</span>" +
-      "</div>" +
-      "<div class=\"catalog-meta-block\">" +
-      "<span class=\"catalog-meta-label\">Shells</span>" +
-      "<span class=\"catalog-pills\">" + renderPills(splitCsv(row.supported_shells)) + "</span>" +
-      "</div>" +
-      "</div>"
+      "<span class=\"catalog-app-name\">" + escapeHtml(row.id) + "</span>" +
+      "</button>" +
+      "</td>" +
+      "<td class=\"catalog-col-command\"><code class=\"catalog-command\">" + escapeHtml(row.command) + "</code></td>" +
+      "<td class=\"catalog-col-summary\"><span class=\"catalog-summary\" title=\"" + escapeHtml(row.summary) + "\">" + escapeHtml(row.summary) + "</span></td>" +
+      "<td class=\"catalog-col-requires\"><span class=\"catalog-inline-list\">" + renderInlineList(splitCsv(row.requires)) + "</span></td>" +
+      "<td class=\"catalog-col-shells\"><span class=\"catalog-inline-list\">" + renderInlineList(splitCsv(row.supported_shells)) + "</span></td>" +
+      "<td class=\"catalog-col-downloads\">" + (downloads ? "<span class=\"catalog-downloads\">" + downloads + "</span>" : "") + "</td>" +
+      "<td class=\"catalog-col-source\"><a class=\"catalog-source-link\" href=\"" + sourceUrlForRow(row) + "\">Source</a></td>"
+    );
+  }
+
+  function renderDetailRowCellsMarkup(detailMarkup) {
+    return (
+      "<td colspan=\"" + TABLE_COLUMN_COUNT + "\">" +
+      "<div class=\"catalog-detail-inner\">" + detailMarkup + "</div>" +
+      "</td>"
+    );
+  }
+
+  function renderDetailRowMarkup(detailId, detailMarkup) {
+    return (
+      "<tr class=\"catalog-detail-row\" id=\"" + detailId + "\">" +
+      renderDetailRowCellsMarkup(detailMarkup) +
+      "</tr>"
     );
   }
 
@@ -450,11 +469,11 @@
       "</div>" +
       "<div class=\"catalog-detail-block\">" +
       "<span class=\"catalog-detail-label\">Requires</span>" +
-      "<span class=\"catalog-pills\">" + renderPills(requires) + "</span>" +
+      "<span class=\"catalog-detail-value\">" + renderInlineList(requires) + "</span>" +
       "</div>" +
       "<div class=\"catalog-detail-block\">" +
       "<span class=\"catalog-detail-label\">Shells</span>" +
-      "<span class=\"catalog-pills\">" + renderPills(shells) + "</span>" +
+      "<span class=\"catalog-detail-value\">" + renderInlineList(shells) + "</span>" +
       "</div>" +
       "</div>" +
       "<div class=\"catalog-detail-section\">" +
@@ -485,6 +504,14 @@
       "<span class=\"catalog-detail-label\">Install</span>" +
       "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>" +
       "</div>" +
+      "<div class=\"catalog-detail-block\">" +
+      "<span class=\"catalog-detail-label\">Requires</span>" +
+      "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.requires)) + "</span>" +
+      "</div>" +
+      "<div class=\"catalog-detail-block\">" +
+      "<span class=\"catalog-detail-label\">Shells</span>" +
+      "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.supported_shells)) + "</span>" +
+      "</div>" +
       "</div>" +
       "<p class=\"catalog-detail-empty\">Could not load the full app manifest right now.</p>" +
       "<p class=\"catalog-detail-source\">Open the source for usage, examples, and app flags: <a href=\"" + sourceUrl + "\">apps/" + escapeHtml(row.id) + "</a></p>" +
@@ -492,8 +519,8 @@
     );
   }
 
-  function renderEmpty(gridNode) {
-    gridNode.innerHTML =
+  function renderEmpty(hostNode) {
+    hostNode.innerHTML =
       "<section class=\"catalog-empty\">" +
       "<h3>No apps are currently published.</h3>" +
       "<p>Check the raw catalog or browse apfeller-apps for the latest source.</p>" +
@@ -501,8 +528,8 @@
       "</section>";
   }
 
-  function renderFailure(gridNode) {
-    gridNode.innerHTML =
+  function renderFailure(hostNode) {
+    hostNode.innerHTML =
       "<section class=\"catalog-empty\">" +
       "<h3>Could not load the published catalog.</h3>" +
       "<p>Try the raw catalog directly or browse apfeller-apps.</p>" +
@@ -560,9 +587,11 @@
     var documentRef = env.document;
     var fetchFn = env.fetch;
     var statusNode = env.statusNode;
-    var gridNode = env.gridNode;
+    var hostNode = env.hostNode;
     var detailCache = Object.create(null);
-    var expandedCard = null;
+    var expandedId = "";
+    var expandedSummaryRow = null;
+    var expandedDetailRow = null;
     var detailToken = 0;
 
     function setStatus(message, state) {
@@ -605,96 +634,138 @@
       return detailCache[row.id];
     }
 
-    function collapseCard(card) {
-      var button = card.querySelector(".catalog-card-toggle");
-      var details = card.querySelector(".catalog-card-details");
-      var row = card.__catalogRow;
+    function setSummaryExpandedState(summaryRow, isExpanded) {
+      var toggle = summaryRow.querySelector(".catalog-row-toggle");
+      var row = summaryRow.__catalogRow;
 
-      button.setAttribute("aria-expanded", "false");
-      button.setAttribute("aria-label", "Show details for " + row.id);
-      card.removeAttribute("data-expanded");
-      details.hidden = true;
-      details.innerHTML = "";
-      details.removeAttribute("data-detail-token");
+      if (isExpanded) {
+        summaryRow.setAttribute("data-expanded", "true");
+        toggle.setAttribute("aria-expanded", "true");
+        toggle.setAttribute("aria-label", "Hide details for " + row.id);
+      } else {
+        summaryRow.removeAttribute("data-expanded");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.setAttribute("aria-label", "Show details for " + row.id);
+      }
     }
 
-    function expandCard(card) {
-      var button = card.querySelector(".catalog-card-toggle");
-      var details = card.querySelector(".catalog-card-details");
-      var row = card.__catalogRow;
+    function removeExpandedRow() {
+      if (expandedSummaryRow) {
+        setSummaryExpandedState(expandedSummaryRow, false);
+      }
+
+      if (expandedDetailRow && expandedDetailRow.parentNode) {
+        expandedDetailRow.parentNode.removeChild(expandedDetailRow);
+      }
+
+      expandedId = "";
+      expandedSummaryRow = null;
+      expandedDetailRow = null;
+    }
+
+    function createDetailRow(row, detailMarkup) {
+      var detailRow = documentRef.createElement("tr");
+      detailRow.className = "catalog-detail-row";
+      detailRow.id = detailIdForRow(row);
+      detailRow.innerHTML = renderDetailRowCellsMarkup(detailMarkup);
+      return detailRow;
+    }
+
+    function expandSummaryRow(summaryRow) {
+      var row = summaryRow.__catalogRow;
       var sourceUrl = sourceUrlForRow(row);
       var token = String(detailToken += 1);
 
-      button.setAttribute("aria-expanded", "true");
-      button.setAttribute("aria-label", "Hide details for " + row.id);
-      card.setAttribute("data-expanded", "true");
-      details.hidden = false;
-      details.setAttribute("data-detail-token", token);
-      details.innerHTML = "<p class=\"catalog-detail-loading\">Loading details...</p>";
+      if (expandedSummaryRow && expandedSummaryRow !== summaryRow) {
+        removeExpandedRow();
+      }
+
+      setSummaryExpandedState(summaryRow, true);
+      expandedId = row.id;
+      expandedSummaryRow = summaryRow;
+      expandedDetailRow = createDetailRow(row, "<p class=\"catalog-detail-loading\">Loading details...</p>");
+      expandedDetailRow.setAttribute("data-detail-token", token);
+      summaryRow.parentNode.insertBefore(expandedDetailRow, summaryRow.nextSibling);
 
       loadAppDetails(row).then(function (manifest) {
-        if (details.getAttribute("data-detail-token") !== token) {
+        var detailMarkup;
+
+        if (!expandedDetailRow || expandedId !== row.id || expandedDetailRow.getAttribute("data-detail-token") !== token) {
           return;
         }
 
         if (manifest) {
-          details.innerHTML = renderDetailMarkup(row, manifest, sourceUrl);
+          detailMarkup = renderDetailMarkup(row, manifest, sourceUrl);
         } else {
-          details.innerHTML = renderFallbackDetailMarkup(row, sourceUrl);
+          detailMarkup = renderFallbackDetailMarkup(row, sourceUrl);
         }
+
+        expandedDetailRow.innerHTML = renderDetailRowCellsMarkup(detailMarkup);
       });
     }
 
-    function toggleCard(card) {
-      var currentId = expandedCard ? expandedCard.getAttribute("data-app-id") : "";
-      var targetId = card.getAttribute("data-app-id");
-      var nextId = nextExpandedCardId(currentId, targetId);
+    function toggleSummaryRow(summaryRow) {
+      var nextId = nextExpandedRowId(expandedId, summaryRow.getAttribute("data-app-id"));
 
       if (!nextId) {
-        collapseCard(card);
-        expandedCard = null;
+        removeExpandedRow();
         return;
       }
 
-      if (expandedCard && expandedCard !== card) {
-        collapseCard(expandedCard);
-      }
-
-      expandCard(card);
-      expandedCard = card;
+      expandSummaryRow(summaryRow);
     }
 
-    function createCard(row) {
-      var article = documentRef.createElement("article");
-      var sourceUrl = sourceUrlForRow(row);
-      var detailId = detailIdForRow(row);
-      var button;
+    function createSummaryRow(row) {
+      var summaryRow = documentRef.createElement("tr");
+      var toggle;
+      var sourceLink;
 
-      article.className = "catalog-card";
-      article.setAttribute("data-app-id", row.id);
-      article.__catalogRow = row;
-      article.innerHTML =
-        "<button class=\"catalog-card-toggle\" type=\"button\" aria-expanded=\"false\" aria-controls=\"" + detailId + "\" aria-label=\"Show details for " + escapeHtml(row.id) + "\">" +
-        renderCollapsedCardMarkup(row) +
-        "</button>" +
-        "<div class=\"catalog-card-footer\">" +
-        "<a class=\"catalog-source-link\" href=\"" + sourceUrl + "\">Source</a>" +
-        "</div>" +
-        "<div class=\"catalog-card-details\" id=\"" + detailId + "\" hidden></div>";
+      summaryRow.className = "catalog-row";
+      summaryRow.setAttribute("data-app-id", row.id);
+      summaryRow.__catalogRow = row;
+      summaryRow.innerHTML = renderSummaryRowCellsMarkup(row);
 
-      button = article.querySelector(".catalog-card-toggle");
-      button.addEventListener("click", function () {
-        toggleCard(article);
+      toggle = summaryRow.querySelector(".catalog-row-toggle");
+      sourceLink = summaryRow.querySelector(".catalog-source-link");
+
+      toggle.addEventListener("click", function (event) {
+        event.stopPropagation();
+        toggleSummaryRow(summaryRow);
       });
 
-      return article;
+      if (sourceLink) {
+        sourceLink.addEventListener("click", function (event) {
+          event.stopPropagation();
+        });
+      }
+
+      summaryRow.addEventListener("click", function (event) {
+        if (event.target && event.target.closest && event.target.closest("a,button")) {
+          return;
+        }
+        toggleSummaryRow(summaryRow);
+      });
+
+      return summaryRow;
     }
 
     function renderCatalog(rows) {
-      expandedCard = null;
-      gridNode.innerHTML = "";
+      var tbody;
+
+      removeExpandedRow();
+      hostNode.innerHTML =
+        "<div class=\"catalog-table-shell\">" +
+        "<div class=\"catalog-table-frame\">" +
+        "<table class=\"catalog-table\">" +
+        renderTableHeaderMarkup() +
+        "<tbody></tbody>" +
+        "</table>" +
+        "</div>" +
+        "</div>";
+
+      tbody = hostNode.querySelector("tbody");
       rows.forEach(function (row) {
-        gridNode.appendChild(createCard(row));
+        tbody.appendChild(createSummaryRow(row));
       });
     }
 
@@ -710,15 +781,16 @@
         })
         .then(function (text) {
           var rows = parseCatalog(text);
+
           if (!rows.length) {
             setStatus("No published apps were found in the current catalog.");
-            renderEmpty(gridNode);
+            renderEmpty(hostNode);
             return null;
           }
 
           return loadDownloadTotals(fetchFn).then(function (downloadTotals) {
             rows.forEach(function (row) {
-              row.downloads = downloadTotals[row.id];
+              row.downloads = downloadTotals[row.id] || 0;
             });
             return rows;
           });
@@ -733,7 +805,7 @@
         })
         .catch(function () {
           setStatus("Could not load the published catalog.", "error");
-          renderFailure(gridNode);
+          renderFailure(hostNode);
         });
     }
 
@@ -747,8 +819,10 @@
     parseAppManifest: parseAppManifest,
     buildDownloadTotals: buildDownloadTotals,
     buildBuiltinFlags: buildBuiltinFlags,
-    nextExpandedCardId: nextExpandedCardId,
-    renderCollapsedCardMarkup: renderCollapsedCardMarkup,
+    nextExpandedRowId: nextExpandedRowId,
+    renderTableHeaderMarkup: renderTableHeaderMarkup,
+    renderSummaryRowCellsMarkup: renderSummaryRowCellsMarkup,
+    renderDetailRowMarkup: renderDetailRowMarkup,
     renderDetailMarkup: renderDetailMarkup,
     renderFallbackDetailMarkup: renderFallbackDetailMarkup,
     createCatalogApp: createCatalogApp,
@@ -756,7 +830,8 @@
       CATALOG_URL: CATALOG_URL,
       APP_SOURCE_BASE_URL: APP_SOURCE_BASE_URL,
       APP_MANIFEST_BASE_URL: APP_MANIFEST_BASE_URL,
-      RELEASES_API_URL: RELEASES_API_URL
+      RELEASES_API_URL: RELEASES_API_URL,
+      TABLE_COLUMN_COUNT: TABLE_COLUMN_COUNT
     }
   };
 
@@ -765,9 +840,9 @@
   }
 
   var statusNode = root.document.getElementById("catalog-status");
-  var gridNode = root.document.getElementById("catalog-grid");
+  var hostNode = root.document.getElementById("catalog-grid");
 
-  if (!statusNode || !gridNode) {
+  if (!statusNode || !hostNode) {
     return;
   }
 
@@ -775,6 +850,6 @@
     document: root.document,
     fetch: root.fetch.bind(root),
     statusNode: statusNode,
-    gridNode: gridNode
+    hostNode: hostNode
   }).start();
 }(typeof window !== "undefined" ? window : globalThis));

@@ -14,7 +14,7 @@ editing this site.
 Install `apfeller` first, then pick an app below and run
 `apfeller install <app>`.
 
-Click any app card to open usage, examples, and flag details.
+Click any app row to open usage, examples, and flag details.
 
 ## Published Apps
 
