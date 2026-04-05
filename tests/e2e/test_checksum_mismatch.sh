@@ -53,4 +53,4 @@ if [ "$status" -eq 0 ]; then
   exit 1
 fi
 
-assert_contains "$output" 'Checksum mismatch for fixture-cmd' "install should fail when the bundle checksum changes"
+assert_contains "$output" 'The downloaded files for fixture-cmd could not be verified.' "install should fail with a user-facing checksum error"

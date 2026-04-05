@@ -63,7 +63,7 @@ if [ "$missing_status" -eq 0 ]; then
   exit 1
 fi
 
-assert_contains "$missing_field_output" 'missing field: example' "fixture-define should reject incomplete structured output"
+assert_contains "$missing_field_output" 'returned a response apfeller could not understand' "fixture-define should reject incomplete structured output with a user-facing error"
 
 too_large=$(awk 'BEGIN { for (i = 0; i < 900; i++) printf "c" }')
 marker="$tmp_dir/fixture-define-apfel-called"

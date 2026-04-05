@@ -28,8 +28,9 @@ if [ "$list_status" -eq 0 ]; then
   exit 1
 fi
 
-assert_contains "$list_output" 'Failed to download app catalog' "list should identify the missing catalog asset"
-assert_contains "$list_output" 'APFELLER_CATALOG_URL' "list should point to the catalog override variable"
+assert_contains "$list_output" 'apfeller could not load the app catalog right now.' "list should use a user-facing catalog error"
+assert_contains "$list_output" 'Check your internet connection and try again.' "list should tell the user what to do next"
+assert_not_contains "$list_output" 'APFELLER_CATALOG_URL' "list should not expose override variables"
 
 set +e
 self_update_output=$(
@@ -46,6 +47,7 @@ if [ "$self_update_status" -eq 0 ]; then
   exit 1
 fi
 
-assert_contains "$self_update_output" 'Failed to download manager archive' "update --self should identify the missing manager asset"
-assert_contains "$self_update_output" 'No published GitHub release asset was found for apfeller.tar.gz.' "update --self should explain the missing manager release asset"
-assert_contains "$self_update_output" 'APFELLER_INSTALL_URL' "update --self should point to the install override variable"
+assert_contains "$self_update_output" 'apfeller could not download its latest files right now.' "update --self should use a user-facing manager error"
+assert_contains "$self_update_output" 'Check your internet connection and try again.' "update --self should tell the user what to do next"
+assert_not_contains "$self_update_output" 'Publish a release' "update --self should not mention maintainer actions"
+assert_not_contains "$self_update_output" 'APFELLER_INSTALL_URL' "update --self should not expose override variables"

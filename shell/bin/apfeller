@@ -49,6 +49,8 @@ TAB=$(printf '\t')
 US=$(printf '\034')
 TMP_DIR=""
 CATALOG_CACHE_PATH=""
+PROGRESS_PID=""
+PROGRESS_MESSAGE=""
 
 print_help() {
   cat <<'EOF'
@@ -66,6 +68,7 @@ EOF
 }
 
 fail() {
+  progress_abort
   printf '%s\n' "$*" >&2
   exit 1
 }
@@ -74,25 +77,76 @@ ensure_dir() {
   mkdir -p "$1"
 }
 
+progress_start() {
+  PROGRESS_MESSAGE=$1
+
+  [ -t 2 ] || return 0
+
+  (
+    trap 'exit 0' INT TERM
+    while :; do
+      for frame in '-' '\\' '|' '/'; do
+        printf '\r[%s] %s' "$frame" "$PROGRESS_MESSAGE" >&2
+        sleep 0.1
+      done
+    done
+  ) &
+  PROGRESS_PID=$!
+}
+
+progress_abort() {
+  if [ -n "${PROGRESS_PID:-}" ]; then
+    kill "$PROGRESS_PID" 2>/dev/null || true
+    wait "$PROGRESS_PID" 2>/dev/null || true
+    PROGRESS_PID=""
+  fi
+
+  if [ -t 2 ]; then
+    printf '\r\033[2K' >&2
+  fi
+
+  PROGRESS_MESSAGE=""
+}
+
 command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
 require_tools() {
   for tool in "$@"; do
-    command_exists "$tool" || fail "Missing required tool: $tool"
+    command_exists "$tool" || fail "apfeller needs $tool to do that. Install $tool and try again."
   done
 }
 
-print_missing_release_asset_hint() {
-  url=$1
-  asset_name=$2
-  override_var=$3
+print_download_failure_help() {
+  label=$1
+  status=$2
 
-  case "$url" in
-    https://github.com/*/releases/latest/download/*|http://github.com/*/releases/latest/download/*|https://github.com/*/releases/download/*/*|http://github.com/*/releases/download/*/*)
-      printf '%s\n' "No published GitHub release asset was found for $asset_name." >&2
-      printf '%s\n' "Publish a release containing $asset_name, or set $override_var to a direct URL." >&2
+  case "$label" in
+    'app catalog')
+      printf '%s\n' "apfeller could not load the app catalog right now." >&2
+      ;;
+    'manager archive')
+      printf '%s\n' "apfeller could not download its latest files right now." >&2
+      ;;
+    *' app bundle')
+      app_id=${label% app bundle}
+      printf '%s\n' "apfeller could not download $app_id right now." >&2
+      ;;
+    *)
+      printf '%s\n' "apfeller could not finish this download right now." >&2
+      ;;
+  esac
+
+  case "$status" in
+    6|7|28|35|56)
+      printf '%s\n' "Check your internet connection and try again." >&2
+      ;;
+    22)
+      printf '%s\n' "That download is not available right now. Please try again later." >&2
+      ;;
+    *)
+      printf '%s\n' "Please try again in a moment." >&2
       ;;
   esac
 }
@@ -101,15 +155,22 @@ download_to_path() {
   url=$1
   output_path=$2
   label=$3
-  asset_name=$4
-  override_var=$5
+  curl_error_path=$(mktemp "${TMPDIR:-/tmp}/apfeller-curl.XXXXXX")
 
-  curl -fsSL "$url" -o "$output_path" && return 0
+  set +e
+  curl -fsSL "$url" -o "$output_path" 2>"$curl_error_path"
   status=$?
+  set -e
 
-  printf '%s\n' "Failed to download $label from $url" >&2
-  printf '%s\n' "Override with $override_var to use a different URL." >&2
-  print_missing_release_asset_hint "$url" "$asset_name" "$override_var"
+  if [ "$status" -eq 0 ]; then
+    rm -f "$curl_error_path"
+    return 0
+  fi
+
+  rm -f "$curl_error_path"
+
+  progress_abort
+  print_download_failure_help "$label" "$status"
   return "$status"
 }
 
@@ -246,7 +307,9 @@ fetch_catalog() {
   require_tools curl
   if [ -z "$CATALOG_CACHE_PATH" ]; then
     CATALOG_CACHE_PATH="$TMP_DIR/apfeller-catalog.tsv"
-    download_to_path "$CATALOG_URL" "$CATALOG_CACHE_PATH" "app catalog" "apfeller-catalog.tsv" "APFELLER_CATALOG_URL"
+    progress_start "Loading app catalog..."
+    download_to_path "$CATALOG_URL" "$CATALOG_CACHE_PATH" "app catalog"
+    progress_abort
   fi
   printf '%s\n' "$CATALOG_CACHE_PATH"
 }
@@ -420,10 +483,11 @@ install_manager_from_archive() {
   rm -rf "$extract_dir"
   mkdir -p "$extract_dir"
 
-  download_to_path "$archive_url" "$archive_path" "manager archive" "$MANAGER_ASSET_NAME" "APFELLER_INSTALL_URL"
+  progress_start "Updating apfeller..."
+  download_to_path "$archive_url" "$archive_path" "manager archive"
   tar -xzf "$archive_path" -C "$extract_dir"
 
-  [ -f "$extract_dir/bin/apfeller" ] || fail "Manager archive is missing bin/apfeller"
+  [ -f "$extract_dir/bin/apfeller" ] || fail "The downloaded apfeller update looks incomplete. Please try again later."
 
   ensure_dir "$LOCAL_BIN_DIR"
   ensure_dir "$CONFIG_DIR"
@@ -431,6 +495,7 @@ install_manager_from_archive() {
   chmod +x "$LOCAL_BIN_DIR/apfeller"
   install_manager_completions "$extract_dir"
 
+  progress_abort
   if apply_shell_setup; then
     printf '%s\n' "Updated apfeller"
   else
@@ -446,7 +511,7 @@ check_required_commands() {
   [ -n "$requires" ] || return 0
 
   split_csv "$requires" | while IFS= read -r required; do
-    command_exists "$required" || fail "Missing required command for $app_id: $required"
+    command_exists "$required" || fail "$app_id needs $required before it can run. Install $required and try again."
   done
 }
 
@@ -472,13 +537,13 @@ ensure_command_slot_available() {
 
   if [ -e "$command_path" ] || [ -L "$command_path" ]; then
     if ! is_managed_symlink "$command_path"; then
-      fail "Refusing to overwrite existing command: $command_name ($command_path)"
+      fail "apfeller will not replace the existing '$command_name' command at $command_path."
     fi
   fi
 
   existing_command=$(command -v "$command_name" 2>/dev/null || true)
   if [ -n "$existing_command" ] && [ "$existing_command" != "$command_path" ]; then
-    fail "Command collision: $command_name already exists at $existing_command"
+    fail "apfeller will not replace the existing '$command_name' command at $existing_command."
   fi
 }
 
@@ -488,9 +553,9 @@ load_runtime_manifest() {
   APP_ARGS_PATH="$app_dir/runtime/args.tsv"
   APP_EXAMPLES_PATH="$app_dir/runtime/examples.txt"
 
-  [ -f "$APP_RUNTIME_MANIFEST" ] || fail "App bundle is missing runtime/manifest.env"
-  [ -f "$APP_ARGS_PATH" ] || fail "App bundle is missing runtime/args.tsv"
-  [ -f "$APP_EXAMPLES_PATH" ] || fail "App bundle is missing runtime/examples.txt"
+  [ -f "$APP_RUNTIME_MANIFEST" ] || fail "This app's files look incomplete. Please reinstall it."
+  [ -f "$APP_ARGS_PATH" ] || fail "This app's files look incomplete. Please reinstall it."
+  [ -f "$APP_EXAMPLES_PATH" ] || fail "This app's files look incomplete. Please reinstall it."
 
   APFELLER_APP_ID=
   APFELLER_APP_REVISION=
@@ -683,9 +748,9 @@ install_app() {
   app_id=$1
   catalog_file=$2
 
-  load_catalog_entry "$app_id" "$catalog_file" || fail "Unknown app: $app_id"
+  load_catalog_entry "$app_id" "$catalog_file" || fail "App not found in the current catalog: $app_id. Run 'apfeller list' to see what's available."
 
-  [ -n "$CAT_SHA256" ] || fail "Catalog entry for $app_id is missing a checksum"
+  [ -n "$CAT_SHA256" ] || fail "apfeller could not verify $app_id right now. Please try again later."
   require_tools curl tar shasum
   check_required_commands "$CAT_ID" "$CAT_REQUIRES"
 
@@ -704,10 +769,11 @@ install_app() {
   ensure_dir "$(dirname "$store_path")"
   ensure_command_slot_available "$command_name"
 
-  download_to_path "$bundle_url" "$archive_path" "$CAT_ID app bundle" "$bundle_name" "APFELLER_CATALOG_URL"
+  progress_start "Installing $CAT_ID..."
+  download_to_path "$bundle_url" "$archive_path" "$CAT_ID app bundle"
   actual_sha=$(shasum -a 256 "$archive_path" | awk '{print $1}')
   if [ "$actual_sha" != "$CAT_SHA256" ]; then
-    fail "Checksum mismatch for $CAT_ID: expected $CAT_SHA256, got $actual_sha"
+    fail "The downloaded files for $CAT_ID could not be verified. Please try again later."
   fi
 
   rm -rf "$extract_dir"
@@ -715,9 +781,9 @@ install_app() {
   tar -xzf "$archive_path" -C "$extract_dir"
 
   load_runtime_manifest "$extract_dir"
-  [ "$APFELLER_APP_COMMAND" = "$CAT_COMMAND" ] || fail "Bundle command mismatch for $CAT_ID"
-  [ "$APFELLER_APP_KIND" = "$CAT_KIND" ] || fail "Bundle kind mismatch for $CAT_ID"
-  [ "$APFELLER_APP_REVISION" = "$CAT_REVISION" ] || fail "Bundle revision mismatch for $CAT_ID"
+  [ "$APFELLER_APP_COMMAND" = "$CAT_COMMAND" ] || fail "The downloaded files for $CAT_ID look incomplete or invalid. Please try again later."
+  [ "$APFELLER_APP_KIND" = "$CAT_KIND" ] || fail "The downloaded files for $CAT_ID look incomplete or invalid. Please try again later."
+  [ "$APFELLER_APP_REVISION" = "$CAT_REVISION" ] || fail "The downloaded files for $CAT_ID look incomplete or invalid. Please try again later."
 
   rm -rf "$store_path"
   mv "$extract_dir" "$store_path"
@@ -735,6 +801,7 @@ install_app() {
     rm -rf "$STORE_DIR/$CAT_ID/$previous_revision"
   fi
 
+  progress_abort
   printf 'Installed %s %s\n' "$CAT_ID" "$CAT_REVISION"
 }
 
@@ -771,7 +838,7 @@ apfeller_require_apfel() {
     return 0
   fi
 
-  printf '%s\n' "Error: apfel not found. Install with: brew install Arthur-Ficial/tap/apfel" >&2
+  printf '%s\n' "This app needs apfel before it can run. Install it with: brew install Arthur-Ficial/tap/apfel" >&2
   return 127
 }
 
@@ -837,11 +904,25 @@ apfeller_clean_command() {
 
 apfeller_copy() {
   if ! command -v pbcopy >/dev/null 2>&1; then
-    printf '%s\n' "Error: pbcopy not found." >&2
+    printf '%s\n' "Copying needs pbcopy, but pbcopy is not available on this system." >&2
     return 127
   fi
 
   printf '%s' "$1" | pbcopy
+}
+
+runtime_query_response() {
+  prompt=$1
+
+  progress_start "Running $APFELLER_APP_COMMAND..."
+  set +e
+  response=$(apfeller_query "$APFELLER_PROMPT_MAX_OUTPUT_TOKENS" "$APFELLER_PROMPT_SYSTEM" "$prompt")
+  status=$?
+  set -e
+  progress_abort
+
+  [ "$status" -eq 0 ] || return "$status"
+  printf '%s' "$response"
 }
 
 apfeller_confirm() {
@@ -1240,40 +1321,40 @@ runtime_format_structured_text() {
     next_field=${1-}
 
     label="$field_name:"
-    case "$response_single_line" in
-      *"$label"*)
-        after_label=${response_single_line#*"$label"}
-        ;;
-      *)
-        fail "Error: apfel response for $APFELLER_APP_COMMAND is missing field: $field_name"
-        ;;
-    esac
-
-    if [ -n "$next_field" ]; then
-      next_label="$next_field:"
-      case "$after_label" in
-        *"$next_label"*)
-          field_value=${after_label%%"$next_label"*}
+      case "$response_single_line" in
+        *"$label"*)
+          after_label=${response_single_line#*"$label"}
           ;;
         *)
-          fail "Error: apfel response for $APFELLER_APP_COMMAND is missing field: $next_field"
+          fail "$APFELLER_APP_COMMAND returned a response apfeller could not understand. Please try again."
           ;;
       esac
-    else
-      field_value=$after_label
-    fi
 
-    field_value=$(trim "$field_value")
-    [ -n "$field_value" ] || fail "Error: apfel response for $APFELLER_APP_COMMAND returned an empty field: $field_name"
+      if [ -n "$next_field" ]; then
+        next_label="$next_field:"
+        case "$after_label" in
+          *"$next_label"*)
+            field_value=${after_label%%"$next_label"*}
+            ;;
+          *)
+            fail "$APFELLER_APP_COMMAND returned a response apfeller could not understand. Please try again."
+          ;;
+        esac
+      else
+        field_value=$after_label
+      fi
+
+      field_value=$(trim "$field_value")
+      [ -n "$field_value" ] || fail "$APFELLER_APP_COMMAND returned a response apfeller could not understand. Please try again."
     printf '%s: %s\n' "$field_name" "$field_value"
   done
 }
 
 runtime_emit_shell_command() {
   prompt=$1
-  response=$(apfeller_query "$APFELLER_PROMPT_MAX_OUTPUT_TOKENS" "$APFELLER_PROMPT_SYSTEM" "$prompt") || return $?
+  response=$(runtime_query_response "$prompt") || return $?
   command_output=$(apfeller_clean_command "$response") || {
-    printf '%s\n' "Error: apfel did not return a usable command." >&2
+    printf '%s\n' "apfeller could not generate a usable command this time. Please try again." >&2
     return 1
   }
 
@@ -1291,7 +1372,7 @@ runtime_emit_shell_command() {
 
 runtime_emit_text() {
   prompt=$1
-  response=$(apfeller_query "$APFELLER_PROMPT_MAX_OUTPUT_TOKENS" "$APFELLER_PROMPT_SYSTEM" "$prompt") || return $?
+  response=$(runtime_query_response "$prompt") || return $?
   printf '%s\n' "$response"
 
   if [ "$RUN_SHOULD_COPY" = "1" ]; then
@@ -1302,7 +1383,7 @@ runtime_emit_text() {
 
 runtime_emit_structured_text() {
   prompt=$1
-  response=$(apfeller_query "$APFELLER_PROMPT_MAX_OUTPUT_TOKENS" "$APFELLER_PROMPT_SYSTEM" "$prompt") || return $?
+  response=$(runtime_query_response "$prompt") || return $?
   formatted=$(runtime_format_structured_text "$response" "$APFELLER_OUTPUT_FIELDS")
   printf '%s\n' "$formatted"
 
@@ -1393,7 +1474,7 @@ cmd_info() {
   [ $# -eq 1 ] || fail "Usage: apfeller info <app>"
 
   catalog_file=$(fetch_catalog)
-  load_catalog_entry "$1" "$catalog_file" || fail "Unknown app: $1"
+  load_catalog_entry "$1" "$catalog_file" || fail "App not found in the current catalog: $1. Run 'apfeller list' to see what's available."
 
   requires=${CAT_REQUIRES:-"(none)"}
   supported_shells=${CAT_SUPPORTED_SHELLS:-"(none)"}
@@ -1510,7 +1591,7 @@ main() {
 
   TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/apfeller.XXXXXX")
   CATALOG_CACHE_PATH=""
-  trap 'rm -rf "$TMP_DIR"' EXIT INT TERM HUP
+  trap 'progress_abort; rm -rf "$TMP_DIR"' EXIT INT TERM HUP
 
   command_name=$1
   shift

@@ -12,37 +12,83 @@ FISH_COMPLETION_DIR=${APFELLER_FISH_COMPLETION_DIR:-"$HOME_DIR/.config/fish/comp
 ZSH_COMPLETION_DIR=${APFELLER_ZSH_COMPLETION_DIR:-"$CONFIG_DIR/completions/zsh"}
 ZSH_INIT_PATH=${APFELLER_ZSH_INIT_PATH:-"$CONFIG_DIR/init.zsh"}
 ASSET_NAME=${APFELLER_MANAGER_ASSET_NAME:-apfeller.tar.gz}
+PROGRESS_PID=
+PROGRESS_MESSAGE=
 
 ensure_dir() {
   mkdir -p "$1"
 }
 
-print_missing_release_asset_hint() {
-  url=$1
-  asset_name=$2
-  override_var=$3
+progress_start() {
+  PROGRESS_MESSAGE=$1
 
-  case "$url" in
-    https://github.com/*/releases/latest/download/*|http://github.com/*/releases/latest/download/*|https://github.com/*/releases/download/*/*|http://github.com/*/releases/download/*/*)
-      printf '%s\n' "No published GitHub release asset was found for $asset_name." >&2
-      printf '%s\n' "Publish a release containing $asset_name, or set $override_var to a direct URL." >&2
+  [ -t 2 ] || return 0
+
+  (
+    trap 'exit 0' INT TERM
+    while :; do
+      for frame in '-' '\\' '|' '/'; do
+        printf '\r[%s] %s' "$frame" "$PROGRESS_MESSAGE" >&2
+        sleep 0.1
+      done
+    done
+  ) &
+  PROGRESS_PID=$!
+}
+
+progress_abort() {
+  if [ -n "${PROGRESS_PID:-}" ]; then
+    kill "$PROGRESS_PID" 2>/dev/null || true
+    wait "$PROGRESS_PID" 2>/dev/null || true
+    PROGRESS_PID=
+  fi
+
+  if [ -t 2 ]; then
+    printf '\r\033[2K' >&2
+  fi
+
+  PROGRESS_MESSAGE=
+}
+
+print_download_failure_help() {
+  status=$1
+
+  printf '%s\n' "apfeller could not download the installer right now." >&2
+
+  case "$status" in
+    6|7|28|35|56)
+      printf '%s\n' "Check your internet connection and try again." >&2
+      ;;
+    22)
+      printf '%s\n' "The download is not available right now. Please try again later." >&2
+      ;;
+    *)
+      printf '%s\n' "Please try again in a moment." >&2
       ;;
   esac
+
+  printf '%s\n' "See https://hasit.github.io/apfeller/install/ for help." >&2
 }
 
 download_to_path() {
   url=$1
   output_path=$2
-  label=$3
-  asset_name=$4
-  override_var=$5
+  curl_error_path=$(mktemp "${TMPDIR:-/tmp}/apfeller-curl.XXXXXX")
 
-  curl -fsSL "$url" -o "$output_path" && return 0
+  set +e
+  curl -fsSL "$url" -o "$output_path" 2>"$curl_error_path"
   status=$?
+  set -e
 
-  printf '%s\n' "Failed to download $label from $url" >&2
-  printf '%s\n' "Override with $override_var to use a different URL." >&2
-  print_missing_release_asset_hint "$url" "$asset_name" "$override_var"
+  if [ "$status" -eq 0 ]; then
+    rm -f "$curl_error_path"
+    return 0
+  fi
+
+  rm -f "$curl_error_path"
+
+  progress_abort
+  print_download_failure_help "$status"
   return "$status"
 }
 
@@ -143,12 +189,12 @@ install_manager_completions() {
 }
 
 if ! command -v curl >/dev/null 2>&1; then
-  printf '%s\n' "Missing required tool: curl" >&2
+  printf '%s\n' "apfeller needs curl to install. Install curl and try again." >&2
   exit 1
 fi
 
 if ! command -v tar >/dev/null 2>&1; then
-  printf '%s\n' "Missing required tool: tar" >&2
+  printf '%s\n' "apfeller needs tar to install. Install tar and try again." >&2
   exit 1
 fi
 
@@ -157,7 +203,7 @@ shell_name=${APFELLER_SHELL:-${SHELL:-}}
 shell_name=${shell_name##*/}
 
 tmp_dir=$(mktemp -d)
-trap 'rm -rf "$tmp_dir"' EXIT INT TERM HUP
+trap 'progress_abort; rm -rf "$tmp_dir"' EXIT INT TERM HUP
 
 archive_path="$tmp_dir/$ASSET_NAME"
 extract_dir="$tmp_dir/extracted"
@@ -166,7 +212,8 @@ ensure_dir "$LOCAL_BIN_DIR"
 ensure_dir "$CONFIG_DIR"
 ensure_dir "$extract_dir"
 
-download_to_path "$asset_url" "$archive_path" "manager archive" "$ASSET_NAME" "APFELLER_INSTALL_URL"
+progress_start "Installing apfeller..."
+download_to_path "$asset_url" "$archive_path"
 tar -xzf "$archive_path" -C "$extract_dir"
 
 cp "$extract_dir/bin/apfeller" "$LOCAL_BIN_DIR/apfeller"
@@ -182,10 +229,12 @@ case "$shell_name" in
     ensure_zsh_source_block
     ;;
   *)
+    progress_abort
     printf '%s\n' "Installed apfeller to $LOCAL_BIN_DIR/apfeller"
     printf '%s\n' "Run this once for the current shell: export PATH=\"$LOCAL_BIN_DIR:\$PATH\""
     exit 0
     ;;
 esac
 
+progress_abort
 printf '%s\n' "Installed apfeller to $LOCAL_BIN_DIR/apfeller"

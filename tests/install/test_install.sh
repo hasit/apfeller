@@ -88,9 +88,10 @@ test_missing_release_asset_message() {
     exit 1
   fi
 
-  assert_contains "$output" 'Failed to download manager archive' "install should identify the missing manager asset"
-  assert_contains "$output" 'No published GitHub release asset was found for apfeller.tar.gz.' "install should explain the release asset requirement"
-  assert_contains "$output" 'APFELLER_INSTALL_URL' "install should point to the override variable"
+  assert_contains "$output" 'apfeller could not download the installer right now.' "install should use a user-facing download error"
+  assert_contains "$output" 'Check your internet connection and try again.' "install should tell the user what to do next"
+  assert_not_contains "$output" 'Publish a release' "install should not mention maintainer actions"
+  assert_not_contains "$output" 'APFELLER_INSTALL_URL' "install should not expose maintainer override variables"
 }
 
 test_fish_install
