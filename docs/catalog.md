@@ -14,6 +14,8 @@ editing this site.
 Install `apfeller` first, then pick an app below and run
 `apfeller install <app>`.
 
+Click any app card to open usage, examples, and flag details.
+
 ## Published Apps
 
 <p class="catalog-status" id="catalog-status">Loading current catalog...</p>
