@@ -36,6 +36,21 @@
     return value.toLocaleString("en-US") + " downloads";
   }
 
+  function appIdFromReleaseTag(tagName) {
+    var separatorIndex;
+
+    if (!tagName) {
+      return "";
+    }
+
+    separatorIndex = tagName.lastIndexOf("-");
+    if (separatorIndex <= 0) {
+      return "";
+    }
+
+    return tagName.slice(0, separatorIndex);
+  }
+
   function parseCatalog(text) {
     var lines = text.split(/\r?\n/).filter(function (line) {
       return line.trim() !== "";
@@ -495,7 +510,37 @@
       "</section>";
   }
 
-  function loadDownloadIndex(fetchFn) {
+  function buildDownloadTotals(releases) {
+    var totals = {};
+
+    if (!Array.isArray(releases)) {
+      return totals;
+    }
+
+    releases.forEach(function (release) {
+      var tagName = release && release.tag_name;
+      var appId = appIdFromReleaseTag(tagName);
+      var expectedAssetName;
+
+      if (!appId || !Array.isArray(release.assets)) {
+        return;
+      }
+
+      expectedAssetName = tagName + ".tar.gz";
+
+      release.assets.forEach(function (asset) {
+        if (!asset || asset.name !== expectedAssetName || typeof asset.download_count !== "number") {
+          return;
+        }
+
+        totals[appId] = (totals[appId] || 0) + asset.download_count;
+      });
+    });
+
+    return totals;
+  }
+
+  function loadDownloadTotals(fetchFn) {
     return fetchFn(RELEASES_API_URL, { cache: "no-store" })
       .then(function (response) {
         if (!response.ok) {
@@ -504,27 +549,7 @@
         return response.json();
       })
       .then(function (releases) {
-        var index = {};
-
-        if (!Array.isArray(releases)) {
-          return index;
-        }
-
-        releases.forEach(function (release) {
-          var tagName = release && release.tag_name;
-          if (!tagName || !Array.isArray(release.assets)) {
-            return;
-          }
-
-          release.assets.forEach(function (asset) {
-            if (!asset || !asset.name || typeof asset.download_count !== "number") {
-              return;
-            }
-            index[tagName + "/" + asset.name] = asset.download_count;
-          });
-        });
-
-        return index;
+        return buildDownloadTotals(releases);
       })
       .catch(function () {
         return {};
@@ -691,12 +716,9 @@
             return null;
           }
 
-          return loadDownloadIndex(fetchFn).then(function (downloadIndex) {
+          return loadDownloadTotals(fetchFn).then(function (downloadTotals) {
             rows.forEach(function (row) {
-              var tag = row.id + "-" + row.revision;
-              var assetName = decodeURIComponent(row.bundle_url.split("/").pop() || "");
-              var key = tag + "/" + assetName;
-              row.downloads = downloadIndex[key];
+              row.downloads = downloadTotals[row.id];
             });
             return rows;
           });
@@ -723,6 +745,7 @@
   root.ApfellerCatalog = {
     parseCatalog: parseCatalog,
     parseAppManifest: parseAppManifest,
+    buildDownloadTotals: buildDownloadTotals,
     buildBuiltinFlags: buildBuiltinFlags,
     nextExpandedCardId: nextExpandedCardId,
     renderCollapsedCardMarkup: renderCollapsedCardMarkup,

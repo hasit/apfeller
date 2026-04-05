@@ -169,11 +169,35 @@ assert(Array.isArray(naming.args[0].choices) && naming.args[0].choices.includes(
 const commandFlags = api.buildBuiltinFlags("shell_command");
 const textFlags = api.buildBuiltinFlags("text");
 const structuredFlags = api.buildBuiltinFlags("structured_text");
+const downloadTotals = api.buildDownloadTotals([
+  {
+    tag_name: "cmd-aaa111",
+    assets: [
+      { name: "cmd-aaa111.tar.gz", download_count: 4 },
+      { name: "cmd-aaa111.sha256", download_count: 99 }
+    ]
+  },
+  {
+    tag_name: "cmd-bbb222",
+    assets: [
+      { name: "cmd-bbb222.tar.gz", download_count: 7 }
+    ]
+  },
+  {
+    tag_name: "log-digest-ccc333",
+    assets: [
+      { name: "log-digest-ccc333.tar.gz", download_count: 3 }
+    ]
+  }
+]);
 
 assert(commandFlags.length === 3, "shell_command apps should expose help, copy, and execute");
 assert(commandFlags.some((flag) => flag.signature.indexOf("--execute") !== -1), "shell_command flags should include execute");
 assert(textFlags.length === 2 && textFlags.some((flag) => flag.signature.indexOf("--copy") !== -1), "text apps should expose copy");
 assert(structuredFlags.length === 2, "structured_text apps should expose help and copy");
+assert(downloadTotals.cmd === 11, "download totals should sum bundle downloads across app revisions");
+assert(downloadTotals["log-digest"] === 3, "download totals should support app ids with hyphens");
+assert(typeof downloadTotals.cmd === "number" && downloadTotals.cmd !== 110, "download totals should ignore non-bundle assets");
 
 assert(api.nextExpandedCardId("", "cmd") === "cmd", "opening a closed card should expand it");
 assert(api.nextExpandedCardId("cmd", "cmd") === "", "clicking the open card should collapse it");
