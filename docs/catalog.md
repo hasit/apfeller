@@ -17,13 +17,6 @@ Install `apfeller` first, then pick an app below and run
 Download counts come from each app's published GitHub release when that data is
 available.
 
-## Guides
-
-- [Install apfeller](../install/)
-- [Browse the catalog](../catalog/)
-- [Use apfeller](../usage/)
-- [Write an app](../write-an-app/)
-
 ## Published Apps
 
 <p class="catalog-status" id="catalog-status">Loading current catalog...</p>
@@ -39,3 +32,10 @@ available.
 </noscript>
 
 <script src="../assets/catalog.js"></script>
+
+## Guides
+
+- [Install apfeller](../install/)
+- [Browse the catalog](../catalog/)
+- [Use apfeller](../usage/)
+- [Write an app](../write-an-app/)

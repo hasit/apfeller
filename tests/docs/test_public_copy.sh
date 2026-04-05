@@ -121,3 +121,21 @@ find "$ROOT_DIR" -name '*.md' -not -path '*/.git/*' -print | while IFS= read -r 
     exit 1
   fi
 done
+
+find "$ROOT_DIR/docs" -name '*.md' -print | while IFS= read -r markdown_path; do
+  if ! awk '
+    /^## Guides$/ {
+      saw_guides = 1
+      next
+    }
+    /^## / && saw_guides {
+      exit 1
+    }
+    END {
+      exit saw_guides ? 0 : 1
+    }
+  ' "$markdown_path"; then
+    printf '%s\n' "docs page does not keep Guides as the final section: $markdown_path" >&2
+    exit 1
+  fi
+done
