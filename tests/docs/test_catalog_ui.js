@@ -199,7 +199,7 @@ assert(downloadTotals.cmd === 11, "download totals should sum bundle downloads a
 assert(downloadTotals["log-digest"] === 3, "download totals should support app ids with hyphens");
 assert(typeof downloadTotals.cmd === "number" && downloadTotals.cmd !== 110, "download totals should ignore non-bundle assets");
 
-assert(api.constants.TABLE_COLUMN_COUNT === 7, "catalog table should expose the expected number of columns");
+assert(api.constants.TABLE_COLUMN_COUNT === 5, "catalog table should expose the expected number of columns");
 assert(api.nextExpandedRowId("", "cmd") === "cmd", "opening a closed row should expand it");
 assert(api.nextExpandedRowId("cmd", "cmd") === "", "clicking the open row should collapse it");
 assert(api.nextExpandedRowId("cmd", "define") === "define", "opening a new row should replace the previous one");
@@ -217,14 +217,19 @@ const row = {
 
 const headerMarkup = api.renderTableHeaderMarkup();
 assert(headerMarkup.includes("catalog-col-app"), "catalog table header should include the app column");
+assert(!headerMarkup.includes(">Command<"), "catalog table header should not keep the command column");
+assert(!headerMarkup.includes(">Source<"), "catalog table header should not keep the source column");
 assert(headerMarkup.includes(">Downloads<"), "catalog table header should include the downloads column");
 
 const summaryCells = api.renderSummaryRowCellsMarkup(row);
 assert(summaryCells.includes("catalog-row-toggle"), "collapsed rows should render a disclosure control");
 assert(summaryCells.includes("aria-controls=\"catalog-details-cmd\""), "collapsed rows should point at their detail row");
 assert(summaryCells.includes("Turn natural language into a shell command."), "collapsed rows should keep the short summary");
-assert(summaryCells.includes(">Source<"), "collapsed rows should include the source link");
+assert(summaryCells.includes("catalog-app-name"), "collapsed rows should use the app name as the disclosure control");
 assert(!summaryCells.includes(row.description), "collapsed rows should not include the long description");
+assert(!summaryCells.includes("catalog-command"), "collapsed rows should not include the command pill");
+assert(!summaryCells.includes(">Source<"), "collapsed rows should not include the source link");
+assert(!summaryCells.includes("catalog-chevron"), "collapsed rows should not include the old chevron affordance");
 assert(!summaryCells.includes("apfeller install cmd"), "collapsed rows should not include the install command");
 
 const summaryWithDownloads = api.renderSummaryRowCellsMarkup({
@@ -242,10 +247,14 @@ assert(!summaryWithDownloads.includes("GitHub downloads"), "collapsed rows shoul
 
 const detailRowMarkup = api.renderDetailRowMarkup("catalog-details-cmd", "<div>detail body</div>");
 assert(detailRowMarkup.includes("catalog-detail-row"), "expanded details should render as a dedicated detail row");
-assert(detailRowMarkup.includes("colspan=\"7\""), "detail rows should span the full table width");
+assert(detailRowMarkup.includes("colspan=\"5\""), "detail rows should span the full table width");
 assert(detailRowMarkup.includes("detail body"), "detail row wrapper should preserve the provided detail markup");
 
 const cmdDetails = api.renderDetailMarkup(row, cmd, "https://github.com/hasit/apfeller-apps/tree/main/apps/cmd");
+assert(cmdDetails.includes("catalog-detail-header"), "expanded details should render a dedicated header");
+assert(cmdDetails.includes("catalog-detail-title"), "expanded details should render the app title prominently");
+assert(cmdDetails.includes(">Source<"), "expanded details should include the source link");
+assert(cmdDetails.includes("catalog-command"), "expanded details should include the command in the detail header");
 assert(cmdDetails.includes("apfeller install cmd"), "expanded details should include the install command");
 assert(cmdDetails.includes("cmd [OPTIONS] &quot;what you want to do&quot;"), "expanded details should include usage");
 assert(cmdDetails.includes("--execute"), "expanded details should include built-in execute for command apps");

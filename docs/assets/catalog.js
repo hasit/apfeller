@@ -4,7 +4,7 @@
   var APP_SOURCE_BASE_URL = "https://github.com/hasit/apfeller-apps/tree/main/apps/";
   var APP_MANIFEST_BASE_URL = "https://raw.githubusercontent.com/hasit/apfeller-apps/main/apps/";
   var RELEASES_API_URL = "https://api.github.com/repos/hasit/apfeller-apps/releases?per_page=100";
-  var TABLE_COLUMN_COUNT = 7;
+  var TABLE_COLUMN_COUNT = 5;
 
   function escapeHtml(value) {
     return String(value)
@@ -299,12 +299,10 @@
       "<thead>" +
       "<tr>" +
       "<th scope=\"col\" class=\"catalog-col-app\">App</th>" +
-      "<th scope=\"col\" class=\"catalog-col-command\">Command</th>" +
       "<th scope=\"col\" class=\"catalog-col-summary\">Summary</th>" +
       "<th scope=\"col\" class=\"catalog-col-requires\">Requires</th>" +
       "<th scope=\"col\" class=\"catalog-col-shells\">Shells</th>" +
       "<th scope=\"col\" class=\"catalog-col-downloads\">Downloads</th>" +
-      "<th scope=\"col\" class=\"catalog-col-source\">Source</th>" +
       "</tr>" +
       "</thead>"
     );
@@ -317,16 +315,13 @@
     return (
       "<td class=\"catalog-col-app\">" +
       "<button class=\"catalog-row-toggle\" type=\"button\" aria-expanded=\"false\" aria-controls=\"" + detailId + "\" aria-label=\"Show details for " + escapeHtml(row.id) + "\">" +
-      "<span class=\"catalog-chevron\" aria-hidden=\"true\">▾</span>" +
       "<span class=\"catalog-app-name\">" + escapeHtml(row.id) + "</span>" +
       "</button>" +
       "</td>" +
-      "<td class=\"catalog-col-command\"><code class=\"catalog-command\">" + escapeHtml(row.command) + "</code></td>" +
       "<td class=\"catalog-col-summary\"><span class=\"catalog-summary\" title=\"" + escapeHtml(row.summary) + "\">" + escapeHtml(row.summary) + "</span></td>" +
       "<td class=\"catalog-col-requires\"><span class=\"catalog-inline-list\">" + renderInlineList(splitCsv(row.requires)) + "</span></td>" +
       "<td class=\"catalog-col-shells\"><span class=\"catalog-inline-list\">" + renderInlineList(splitCsv(row.supported_shells)) + "</span></td>" +
-      "<td class=\"catalog-col-downloads\">" + (downloads ? "<span class=\"catalog-downloads\">" + downloads + "</span>" : "") + "</td>" +
-      "<td class=\"catalog-col-source\"><a class=\"catalog-source-link\" href=\"" + sourceUrlForRow(row) + "\">Source</a></td>"
+      "<td class=\"catalog-col-downloads\">" + (downloads ? "<span class=\"catalog-downloads\">" + downloads + "</span>" : "") + "</td>"
     );
   }
 
@@ -427,6 +422,15 @@
     );
   }
 
+  function renderDetailFactMarkup(label, contentMarkup) {
+    return (
+      "<div class=\"catalog-detail-fact\">" +
+      "<span class=\"catalog-detail-label\">" + escapeHtml(label) + "</span>" +
+      "<div class=\"catalog-detail-fact-body\">" + contentMarkup + "</div>" +
+      "</div>"
+    );
+  }
+
   function renderDetailMarkup(row, manifest, sourceUrl) {
     var requires = Array.isArray(manifest.requires_commands) && manifest.requires_commands.length
       ? manifest.requires_commands
@@ -439,6 +443,9 @@
     var examples = manifest.help && Array.isArray(manifest.help.examples) ? manifest.help.examples : [];
     var outputMode = manifest.output && manifest.output.mode ? manifest.output.mode : "";
     var builtinFlags = buildBuiltinFlags(outputMode);
+    var downloads = row.downloads > 0
+      ? "<span class=\"catalog-downloads\">" + escapeHtml(formatDownloads(row.downloads)) + "</span>"
+      : "";
     var appFlags = (manifest.args || []).map(function (arg) {
       return {
         signature: renderOptionSignature(arg),
@@ -451,46 +458,43 @@
 
     return (
       "<div class=\"catalog-detail-panel\">" +
+      "<div class=\"catalog-detail-header\">" +
+      "<div class=\"catalog-detail-title-group\">" +
+      "<h4 class=\"catalog-detail-title\">" + escapeHtml(row.id) + "</h4>" +
+      "<code class=\"catalog-command\">" + escapeHtml(manifest.command || row.command) + "</code>" +
+      "</div>" +
+      "<div class=\"catalog-detail-actions\">" +
+      downloads +
+      "<a class=\"catalog-source-link\" href=\"" + sourceUrl + "\">Source</a>" +
+      "</div>" +
+      "</div>" +
       "<p class=\"catalog-detail-description\">" + escapeHtml(description) + "</p>" +
-      "<div class=\"catalog-detail-grid\">" +
-      "<div class=\"catalog-detail-block\">" +
-      "<span class=\"catalog-detail-label\">Install</span>" +
-      "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>" +
-      "</div>" +
+      "<div class=\"catalog-detail-facts\">" +
+      renderDetailFactMarkup("Command", "<code class=\"catalog-detail-code\">" + escapeHtml(manifest.command || row.command) + "</code>") +
+      renderDetailFactMarkup("Install", "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>") +
       (usage ? (
-        "<div class=\"catalog-detail-block\">" +
-        "<span class=\"catalog-detail-label\">Usage</span>" +
-        "<code class=\"catalog-detail-code\">" + escapeHtml(usage) + "</code>" +
-        "</div>"
+        renderDetailFactMarkup("Usage", "<code class=\"catalog-detail-code\">" + escapeHtml(usage) + "</code>")
       ) : "") +
-      "<div class=\"catalog-detail-block\">" +
-      "<span class=\"catalog-detail-label\">Kind</span>" +
-      "<span class=\"catalog-detail-value\">" + escapeHtml((manifest.kind || row.kind) + (outputMode ? " · " + outputMode : "")) + "</span>" +
+      renderDetailFactMarkup("Kind", "<span class=\"catalog-detail-value\">" + escapeHtml((manifest.kind || row.kind) + (outputMode ? " · " + outputMode : "")) + "</span>") +
+      renderDetailFactMarkup("Requires", "<span class=\"catalog-detail-value\">" + renderInlineList(requires) + "</span>") +
+      renderDetailFactMarkup("Shells", "<span class=\"catalog-detail-value\">" + renderInlineList(shells) + "</span>") +
       "</div>" +
-      "<div class=\"catalog-detail-block\">" +
-      "<span class=\"catalog-detail-label\">Requires</span>" +
-      "<span class=\"catalog-detail-value\">" + renderInlineList(requires) + "</span>" +
-      "</div>" +
-      "<div class=\"catalog-detail-block\">" +
-      "<span class=\"catalog-detail-label\">Shells</span>" +
-      "<span class=\"catalog-detail-value\">" + renderInlineList(shells) + "</span>" +
-      "</div>" +
-      "</div>" +
-      "<div class=\"catalog-detail-section\">" +
-      "<span class=\"catalog-detail-label\">Examples</span>" +
+      "<div class=\"catalog-detail-section catalog-detail-section-wide\">" +
+      "<span class=\"catalog-section-title\">Examples</span>" +
       renderExamplesMarkup(examples) +
       "</div>" +
+      "<div class=\"catalog-detail-section-grid\">" +
       "<div class=\"catalog-detail-section\">" +
-      "<span class=\"catalog-detail-label\">Built-in flags</span>" +
+      "<span class=\"catalog-section-title\">Built-in flags</span>" +
       renderFlagListMarkup(builtinFlags) +
       "</div>" +
       "<div class=\"catalog-detail-section\">" +
-      "<span class=\"catalog-detail-label\">App flags</span>" +
+      "<span class=\"catalog-section-title\">App flags</span>" +
       (appFlags.length
         ? renderFlagListMarkup(appFlags)
         : "<p class=\"catalog-detail-empty\">No app-specific flags.</p>") +
       "</div>" +
-      "<p class=\"catalog-detail-source\">More detail: <a href=\"" + sourceUrl + "\">apps/" + escapeHtml(row.id) + "</a></p>" +
+      "</div>" +
       "</div>"
     );
   }
@@ -498,20 +502,21 @@
   function renderFallbackDetailMarkup(row, sourceUrl) {
     return (
       "<div class=\"catalog-detail-panel\">" +
+      "<div class=\"catalog-detail-header\">" +
+      "<div class=\"catalog-detail-title-group\">" +
+      "<h4 class=\"catalog-detail-title\">" + escapeHtml(row.id) + "</h4>" +
+      "<code class=\"catalog-command\">" + escapeHtml(row.command) + "</code>" +
+      "</div>" +
+      "<div class=\"catalog-detail-actions\">" +
+      "<a class=\"catalog-source-link\" href=\"" + sourceUrl + "\">Source</a>" +
+      "</div>" +
+      "</div>" +
       "<p class=\"catalog-detail-description\">" + escapeHtml(row.description) + "</p>" +
-      "<div class=\"catalog-detail-grid\">" +
-      "<div class=\"catalog-detail-block\">" +
-      "<span class=\"catalog-detail-label\">Install</span>" +
-      "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>" +
-      "</div>" +
-      "<div class=\"catalog-detail-block\">" +
-      "<span class=\"catalog-detail-label\">Requires</span>" +
-      "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.requires)) + "</span>" +
-      "</div>" +
-      "<div class=\"catalog-detail-block\">" +
-      "<span class=\"catalog-detail-label\">Shells</span>" +
-      "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.supported_shells)) + "</span>" +
-      "</div>" +
+      "<div class=\"catalog-detail-facts\">" +
+      renderDetailFactMarkup("Command", "<code class=\"catalog-detail-code\">" + escapeHtml(row.command) + "</code>") +
+      renderDetailFactMarkup("Install", "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>") +
+      renderDetailFactMarkup("Requires", "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.requires)) + "</span>") +
+      renderDetailFactMarkup("Shells", "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.supported_shells)) + "</span>") +
       "</div>" +
       "<p class=\"catalog-detail-empty\">Could not load the full app manifest right now.</p>" +
       "<p class=\"catalog-detail-source\">Open the source for usage, examples, and app flags: <a href=\"" + sourceUrl + "\">apps/" + escapeHtml(row.id) + "</a></p>" +
@@ -718,7 +723,6 @@
     function createSummaryRow(row) {
       var summaryRow = documentRef.createElement("tr");
       var toggle;
-      var sourceLink;
 
       summaryRow.className = "catalog-row";
       summaryRow.setAttribute("data-app-id", row.id);
@@ -726,18 +730,11 @@
       summaryRow.innerHTML = renderSummaryRowCellsMarkup(row);
 
       toggle = summaryRow.querySelector(".catalog-row-toggle");
-      sourceLink = summaryRow.querySelector(".catalog-source-link");
 
       toggle.addEventListener("click", function (event) {
         event.stopPropagation();
         toggleSummaryRow(summaryRow);
       });
-
-      if (sourceLink) {
-        sourceLink.addEventListener("click", function (event) {
-          event.stopPropagation();
-        });
-      }
 
       summaryRow.addEventListener("click", function (event) {
         if (event.target && event.target.closest && event.target.closest("a,button")) {
