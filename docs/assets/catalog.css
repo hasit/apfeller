@@ -5,6 +5,10 @@
   background: #f8f1e6;
 }
 
+.catalog-status:empty {
+  display: none;
+}
+
 .catalog-status[data-state="error"] {
   border-left-color: #b33a1b;
   background: #fdeee9;
@@ -12,58 +16,128 @@
 
 .catalog-grid {
   display: grid;
-  gap: 1rem;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
 }
 
 .catalog-card,
 .catalog-empty {
-  padding: 1rem 1.1rem;
+  padding: 0.9rem 1rem;
   border: 1px solid #d9cfbf;
   border-radius: 0.85rem;
   background: #fffdf8;
 }
 
+.catalog-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .catalog-card h3,
 .catalog-empty h3 {
-  margin-top: 0;
+  margin: 0;
+}
+
+.catalog-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.catalog-heading {
+  min-width: 0;
+}
+
+.catalog-side {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: end;
 }
 
 .catalog-summary {
-  margin: 0.35rem 0 0.75rem;
+  margin: 0.2rem 0 0;
   font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.35;
 }
 
 .catalog-description {
-  margin: 0 0 1rem;
+  margin: 0;
+  font-size: 0.94rem;
+  line-height: 1.45;
+  color: #574d3e;
 }
 
 .catalog-meta {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.45rem;
+  font-size: 0.92rem;
+}
+
+.catalog-meta-row {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-start;
 }
 
 .catalog-meta strong {
   display: inline-block;
-  min-width: 8rem;
+  min-width: 4.9rem;
+  color: #695a44;
 }
 
 .catalog-pills {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.3rem;
   vertical-align: middle;
 }
 
 .catalog-pill {
   display: inline-block;
-  padding: 0.12rem 0.55rem;
+  padding: 0.08rem 0.45rem;
   border-radius: 999px;
   background: #efe5d0;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
 }
 
 .catalog-install {
-  margin-top: 1rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid #e8decd;
+  margin-top: 0.15rem;
+}
+
+.catalog-command {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #f1e7d7;
+  font-size: 0.84rem;
+}
+
+.catalog-downloads {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #e8f1e7;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .catalog-card-top {
+    flex-direction: column;
+  }
+
+  .catalog-side {
+    justify-items: start;
+  }
+
+  .catalog-meta-row {
+    display: block;
+  }
+
+  .catalog-meta strong {
+    min-width: 0;
+    margin-bottom: 0.2rem;
+  }
 }

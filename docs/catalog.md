@@ -14,10 +14,13 @@ editing this site.
 Install `apfeller` first, then pick an app below and run
 `apfeller install <app>`.
 
+Download counts come from each app's published GitHub release when that data is
+available.
+
 ## Guides
 
-- [Install](../install/)
-- [Catalog](../catalog/)
+- [Install apfeller](../install/)
+- [Browse the catalog](../catalog/)
 - [Use apfeller](../usage/)
 - [Write an app](../write-an-app/)
 

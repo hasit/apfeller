@@ -16,12 +16,6 @@ apps you want.
 Many current apps use `apfel`. Each app's requirements are listed on the
 [Catalog](catalog/) page.
 
-## Start Here
-
-- [Install apfeller](install/)
-- [Browse the catalog](catalog/)
-- [Write an app](write-an-app/)
-
 ## Quick Start
 
 ```sh
@@ -34,7 +28,7 @@ Use the [Catalog](catalog/) page to choose an app id before you install it.
 
 ## Guides
 
-- [Install](install/)
-- [Catalog](catalog/)
+- [Install apfeller](install/)
+- [Browse the catalog](catalog/)
 - [Use apfeller](usage/)
 - [Write an app](write-an-app/)

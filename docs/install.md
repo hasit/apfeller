@@ -70,7 +70,7 @@ running `apfeller`.
 
 ## Guides
 
-- [Install](../install/)
-- [Catalog](../catalog/)
+- [Install apfeller](../install/)
+- [Browse the catalog](../catalog/)
 - [Use apfeller](../usage/)
 - [Write an app](../write-an-app/)
