@@ -2,6 +2,10 @@
 
 set -eu
 
+MAX_CONTEXT_TOKENS=4096
+MAX_INPUT_BYTES=768
+MAX_OUTPUT_TOKENS=120
+
 resolve_script_dir() {
   script_path=$0
 
@@ -107,7 +111,9 @@ term=$*
 system_prompt='You are a tiny multilingual dictionary. Output exactly 4 labeled fields: word, lang, meaning, example. No markdown. No bullets. No extra fields. Keep the full reply under 80 tokens. Detect the input language unless it is provided explicitly. If the detected input language is English, write the meaning and example in the requested output language. If the detected input language is not English and the requested output language is English, write the meaning in English and write the example in the original language followed by a concise English translation in parentheses on the same line. If the requested output language is not English, write the meaning and example in that requested output language.'
 prompt=$(printf 'Input language: %s\nOutput language: %s\nTerm: %s' "$input_lang" "$output_lang" "$term")
 
-response=$(apfeller_query 120 "$system_prompt" "$prompt") || exit $?
+apfeller_require_context_budget "define" "$MAX_CONTEXT_TOKENS" "$MAX_INPUT_BYTES" "$MAX_OUTPUT_TOKENS" "$prompt" || exit $?
+
+response=$(apfeller_query "$MAX_OUTPUT_TOKENS" "$system_prompt" "$prompt") || exit $?
 
 formatted=$(printf '%s\n' "$response" \
   | perl -0pe 's/\s+(lang:|meaning:|example:)/\n$1/g' \

@@ -2,6 +2,10 @@
 
 set -eu
 
+MAX_CONTEXT_TOKENS=4096
+MAX_INPUT_BYTES=1024
+MAX_OUTPUT_TOKENS=128
+
 resolve_script_dir() {
   script_path=$0
 
@@ -91,4 +95,6 @@ done
 request=$*
 system_prompt='You generate compact UNIX one-liners for macOS. Output ONLY the command. No markdown. No code fences. No comments. No prose. Keep it to one line. Prefer awk, sed, grep, sort, uniq, cut, tr, xargs, find, and jq. Use pipes when useful. If the user mentions a filename, path, delimiter, field number, or pattern, preserve it verbatim and do not invent replacements. Keep the command as short as possible while staying correct.'
 
-apfeller_emit_command 128 "$system_prompt" "$request" "$should_copy" "$should_execute"
+apfeller_require_context_budget "oneliner" "$MAX_CONTEXT_TOKENS" "$MAX_INPUT_BYTES" "$MAX_OUTPUT_TOKENS" "$request" || exit $?
+
+apfeller_emit_command "$MAX_OUTPUT_TOKENS" "$system_prompt" "$request" "$should_copy" "$should_execute"

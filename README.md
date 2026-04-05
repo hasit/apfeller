@@ -1,10 +1,14 @@
 # apfeller
 
-`apfeller` is a small shell app manager for shell-native utilities built on top
-of [apfel](https://github.com/Arthur-Ficial/apfel).
+`apfeller` is an AI-powered collection of small shell apps built on
+[apfel](https://apfel.franzai.com/) ([source repo](https://github.com/Arthur-Ficial/apfel)).
+The AI apps run fully local on your Mac with zero API cost: no API bill, no API
+keys, and no cloud round-trip.
 
-It installs a lightweight manager first, then lets users opt into focused apps
-like `cmd`, `oneliner`, `define`, and `port`.
+It installs a lightweight manager first, then lets users opt into focused apps.
+The AI apps are intentionally designed for small inputs, small outputs, and
+instant single-turn results so they fit apfel's fixed 4,096-token combined
+context window. `port` is included as a simple local utility.
 
 ## What v1 includes
 
@@ -42,11 +46,14 @@ apfeller update --self | --all | <app>...
 apfeller doctor
 ```
 
-## Seed Apps
+## AI Apps
 
 - `cmd`: natural language to a single shell command via `apfel`
 - `oneliner`: natural language to a compact UNIX pipeline via `apfel`
 - `define`: tiny multilingual dictionary lookup via `apfel`
+
+## Local Utility
+
 - `port`: show which process is using a local port
 
 ## Development
@@ -63,6 +70,8 @@ tests/apps/test_cmd.sh
 tests/apps/test_oneliner.sh
 tests/apps/test_define.sh
 tests/apps/test_port.sh
+tests/apps/test_context_budget.sh
+tests/docs/test_public_copy.sh
 tests/install/test_install.sh
 tests/release/test_package_release.sh
 tests/e2e/test_manager.sh

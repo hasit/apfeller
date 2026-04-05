@@ -28,6 +28,21 @@ assert_contains() {
   esac
 }
 
+assert_not_contains() {
+  haystack=$1
+  needle=$2
+  message=${3:-}
+
+  case "$haystack" in
+    *"$needle"*)
+      printf 'assert_not_contains failed\nneedle: %s\n%s\n' "$needle" "$message" >&2
+      exit 1
+      ;;
+    *)
+      ;;
+  esac
+}
+
 assert_file_exists() {
   path=$1
   if [ ! -e "$path" ]; then

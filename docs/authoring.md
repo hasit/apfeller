@@ -28,6 +28,15 @@ Manifest rules for v1:
 - If an app uses apfel, source [runtime/lib/apfel.sh](/Users/hasit/github/apfeller/runtime/lib/apfel.sh).
 - Command names are public and unprefixed, so choose carefully.
 
+AI-backed app scripts must also declare:
+
+- `MAX_CONTEXT_TOKENS=4096`
+- `MAX_INPUT_BYTES`
+- `MAX_OUTPUT_TOKENS`
+
+CI checks `system_prompt + MAX_INPUT_BYTES + MAX_OUTPUT_TOKENS + 256 <= 4096`
+for every AI app to keep requests inside apfel's fixed combined window.
+
 To package release bundles locally:
 
 ```sh

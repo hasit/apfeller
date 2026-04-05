@@ -1,5 +1,12 @@
 # Install
 
+`apfeller` packages small shell apps built on
+[apfel](https://apfel.franzai.com/). The AI apps run fully local on your Mac
+with zero API cost: no API bill, no API keys, and no cloud round-trip. They are
+intentionally designed for small inputs, small outputs, and instant single-turn
+results inside apfel's fixed 4,096-token combined window. `port` is the one
+simple non-AI local utility.
+
 The public install path is:
 
 ```sh

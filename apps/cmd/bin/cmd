@@ -2,6 +2,10 @@
 
 set -eu
 
+MAX_CONTEXT_TOKENS=4096
+MAX_INPUT_BYTES=1024
+MAX_OUTPUT_TOKENS=96
+
 resolve_script_dir() {
   script_path=$0
 
@@ -91,4 +95,6 @@ done
 request=$*
 system_prompt='You convert natural language into a single macOS shell command. Output ONLY the command. No markdown. No code fences. No comments. No prose. One line only. Use standard terminal tools. Prefer safe read-only commands unless the user explicitly asks to modify, delete, or execute something. If the user mentions a filename, path, port, branch, or pattern, preserve it verbatim instead of inventing alternatives. If multiple answers are possible, pick the most direct command.'
 
-apfeller_emit_command 96 "$system_prompt" "$request" "$should_copy" "$should_execute"
+apfeller_require_context_budget "cmd" "$MAX_CONTEXT_TOKENS" "$MAX_INPUT_BYTES" "$MAX_OUTPUT_TOKENS" "$request" || exit $?
+
+apfeller_emit_command "$MAX_OUTPUT_TOKENS" "$system_prompt" "$request" "$should_copy" "$should_execute"

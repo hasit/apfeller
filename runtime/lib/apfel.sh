@@ -9,6 +9,29 @@ apfeller_require_apfel() {
   return 127
 }
 
+apfeller_count_bytes() {
+  LC_ALL=C printf '%s' "$1" | wc -c | awk '{print $1}'
+}
+
+apfeller_require_context_budget() {
+  app_name=$1
+  max_context_tokens=$2
+  max_input_bytes=$3
+  max_output_tokens=$4
+  user_prompt=$5
+
+  prompt_bytes=$(apfeller_count_bytes "$user_prompt")
+  effective_limit=$((max_context_tokens - max_output_tokens - 256))
+  if [ "$max_input_bytes" -lt "$effective_limit" ]; then
+    effective_limit=$max_input_bytes
+  fi
+
+  if [ "$prompt_bytes" -gt "$effective_limit" ]; then
+    printf '%s\n' "Input too large for $app_name; keep it under $effective_limit bytes so it fits apfel's ${max_context_tokens}-token window." >&2
+    return 1
+  fi
+}
+
 apfeller_query() {
   max_tokens=$1
   system_prompt=$2
