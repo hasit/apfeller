@@ -31,6 +31,7 @@ fi
 assert_contains "$list_output" 'apfeller could not load the app catalog right now.' "list should use a user-facing catalog error"
 assert_contains "$list_output" 'Check your internet connection and try again.' "list should tell the user what to do next"
 assert_not_contains "$list_output" 'APFELLER_CATALOG_URL' "list should not expose override variables"
+assert_not_contains "$list_output" 'Downloading app catalog...' "non-interactive failures should not render progress bars"
 
 set +e
 self_update_output=$(
@@ -51,3 +52,4 @@ assert_contains "$self_update_output" 'apfeller could not download its latest fi
 assert_contains "$self_update_output" 'Check your internet connection and try again.' "update --self should tell the user what to do next"
 assert_not_contains "$self_update_output" 'Publish a release' "update --self should not mention maintainer actions"
 assert_not_contains "$self_update_output" 'APFELLER_INSTALL_URL' "update --self should not expose override variables"
+assert_not_contains "$self_update_output" 'Downloading apfeller update...' "non-interactive failures should not render progress bars"

@@ -6,6 +6,10 @@ if [ -n "${APFELLER_STUB_MARKER:-}" ]; then
   : >"$APFELLER_STUB_MARKER"
 fi
 
+if [ -n "${APFELLER_STUB_SLEEP:-}" ]; then
+  sleep "$APFELLER_STUB_SLEEP"
+fi
+
 if [ "${APFELLER_STUB_FAIL_IF_CALLED:-0}" = "1" ]; then
   printf '%s\n' "apfel stub should not have been called" >&2
   exit 97

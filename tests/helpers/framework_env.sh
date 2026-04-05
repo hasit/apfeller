@@ -30,8 +30,9 @@ setup_framework_env() {
 framework_run_manager() {
   HOME="$TEST_HOME_DIR" \
   PATH="$TEST_HOME_DIR/.local/bin:$TEST_STUB_DIR:$PATH" \
-  APFELLER_CATALOG_URL="file://$TEST_CATALOG_PATH" \
-  APFELLER_INSTALL_URL="file://$TEST_DIST_DIR/apfeller.tar.gz" \
+  APFELLER_SHELL="${APFELLER_SHELL:-zsh}" \
+  APFELLER_CATALOG_URL="${APFELLER_CATALOG_URL:-file://$TEST_CATALOG_PATH}" \
+  APFELLER_INSTALL_URL="${APFELLER_INSTALL_URL:-file://$TEST_DIST_DIR/apfeller.tar.gz}" \
   apfeller "$@"
 }
 

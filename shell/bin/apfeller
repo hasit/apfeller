@@ -51,6 +51,10 @@ TMP_DIR=""
 CATALOG_CACHE_PATH=""
 PROGRESS_PID=""
 PROGRESS_MESSAGE=""
+PROGRESS_MODE=""
+PROGRESS_CHARSET=""
+PROGRESS_DELAY_SECONDS=0.18
+PROGRESS_INTERVAL_SECONDS=0.10
 
 print_help() {
   cat <<'EOF'
@@ -77,18 +81,124 @@ ensure_dir() {
   mkdir -p "$1"
 }
 
-progress_start() {
-  PROGRESS_MESSAGE=$1
+progress_can_render() {
+  [ -t 2 ] || return 1
+  [ "${TERM:-}" != "dumb" ] || return 1
+}
 
-  [ -t 2 ] || return 0
+progress_detect_charset() {
+  locale=${LC_ALL:-${LC_CTYPE:-${LANG:-}}}
+  locale=$(printf '%s' "$locale" | tr '[:lower:]' '[:upper:]')
+
+  case "$locale" in
+    *UTF-8*|*UTF8*)
+      printf '%s\n' "unicode"
+      ;;
+    *)
+      printf '%s\n' "ascii"
+      ;;
+  esac
+}
+
+progress_spin_frame() {
+  charset=$1
+  step=$2
+
+  if [ "$charset" = "unicode" ]; then
+    case $((step % 10)) in
+      0) printf '%s' '⠋' ;;
+      1) printf '%s' '⠙' ;;
+      2) printf '%s' '⠹' ;;
+      3) printf '%s' '⠸' ;;
+      4) printf '%s' '⠼' ;;
+      5) printf '%s' '⠴' ;;
+      6) printf '%s' '⠦' ;;
+      7) printf '%s' '⠧' ;;
+      8) printf '%s' '⠇' ;;
+      *) printf '%s' '⠏' ;;
+    esac
+    return 0
+  fi
+
+  case $((step % 5)) in
+    0) printf '%s' '.  ' ;;
+    1) printf '%s' '.. ' ;;
+    2) printf '%s' '...' ;;
+    3) printf '%s' '.. ' ;;
+    *) printf '%s' '.  ' ;;
+  esac
+}
+
+progress_bar_frame() {
+  charset=$1
+  step=$2
+
+  if [ "$charset" = "unicode" ]; then
+    case $((step % 10)) in
+      0) segment='███     ' ;;
+      1) segment=' ███    ' ;;
+      2) segment='  ███   ' ;;
+      3) segment='   ███  ' ;;
+      4) segment='    ███ ' ;;
+      5) segment='     ███' ;;
+      6) segment='    ███ ' ;;
+      7) segment='   ███  ' ;;
+      8) segment='  ███   ' ;;
+      *) segment=' ███    ' ;;
+    esac
+  else
+    case $((step % 10)) in
+      0) segment='###     ' ;;
+      1) segment=' ###    ' ;;
+      2) segment='  ###   ' ;;
+      3) segment='   ###  ' ;;
+      4) segment='    ### ' ;;
+      5) segment='     ###' ;;
+      6) segment='    ### ' ;;
+      7) segment='   ###  ' ;;
+      8) segment='  ###   ' ;;
+      *) segment=' ###    ' ;;
+    esac
+  fi
+
+  printf '[%s]' "$segment"
+}
+
+progress_frame() {
+  mode=$1
+  charset=$2
+  step=$3
+
+  case "$mode" in
+    bar)
+      progress_bar_frame "$charset" "$step"
+      ;;
+    *)
+      progress_spin_frame "$charset" "$step"
+      ;;
+  esac
+}
+
+progress_start() {
+  mode=$1
+  message=$2
+
+  progress_abort
+  PROGRESS_MODE=$mode
+  PROGRESS_MESSAGE=$message
+  PROGRESS_CHARSET=$(progress_detect_charset)
+
+  progress_can_render || return 0
 
   (
     trap 'exit 0' INT TERM
+    sleep "$PROGRESS_DELAY_SECONDS"
+    step=0
     while :; do
-      for frame in '-' '\\' '|' '/'; do
-        printf '\r[%s] %s' "$frame" "$PROGRESS_MESSAGE" >&2
-        sleep 0.1
-      done
+      frame=$(progress_frame "$PROGRESS_MODE" "$PROGRESS_CHARSET" "$step")
+      printf '\r\033[2K%s %s' "$PROGRESS_MESSAGE" "$frame" >&2
+      step=$((step + 1))
+      sleep "$PROGRESS_INTERVAL_SECONDS"
     done
   ) &
   PROGRESS_PID=$!
@@ -101,11 +211,13 @@ progress_abort() {
     PROGRESS_PID=""
   fi
 
-  if [ -t 2 ]; then
+  if progress_can_render; then
     printf '\r\033[2K' >&2
   fi
 
   PROGRESS_MESSAGE=""
+  PROGRESS_MODE=""
+  PROGRESS_CHARSET=""
 }
 
 command_exists() {
@@ -115,6 +227,15 @@ command_exists() {
 require_tools() {
   for tool in "$@"; do
     command_exists "$tool" || fail "apfeller needs $tool to do that. Install $tool and try again."
+  done
+}
+
+require_tools_or_return() {
+  for tool in "$@"; do
+    if ! command_exists "$tool"; then
+      printf '%s\n' "apfeller needs $tool to do that. Install $tool and try again." >&2
+      return 127
+    fi
   done
 }
 
@@ -155,12 +276,17 @@ download_to_path() {
   url=$1
   output_path=$2
   label=$3
+  progress_message=$4
   curl_error_path=$(mktemp "${TMPDIR:-/tmp}/apfeller-curl.XXXXXX")
+
+  progress_start bar "$progress_message"
 
   set +e
   curl -fsSL "$url" -o "$output_path" 2>"$curl_error_path"
   status=$?
   set -e
+
+  progress_abort
 
   if [ "$status" -eq 0 ]; then
     rm -f "$curl_error_path"
@@ -249,6 +375,19 @@ ensure_state_file() {
   fi
 }
 
+clear_catalog_entry() {
+  CAT_ID=
+  CAT_REVISION=
+  CAT_SUMMARY=
+  CAT_DESCRIPTION=
+  CAT_COMMAND=
+  CAT_KIND=
+  CAT_REQUIRES=
+  CAT_SUPPORTED_SHELLS=
+  CAT_BUNDLE_URL=
+  CAT_SHA256=
+}
+
 state_has_apps() {
   [ -f "$STATE_PATH" ] || return 1
   awk 'NR > 1 { found = 1; exit } END { exit found ? 0 : 1 }' "$STATE_PATH"
@@ -307,9 +446,7 @@ fetch_catalog() {
   require_tools curl
   if [ -z "$CATALOG_CACHE_PATH" ]; then
     CATALOG_CACHE_PATH="$TMP_DIR/apfeller-catalog.tsv"
-    progress_start "Loading app catalog..."
-    download_to_path "$CATALOG_URL" "$CATALOG_CACHE_PATH" "app catalog"
-    progress_abort
+    download_to_path "$CATALOG_URL" "$CATALOG_CACHE_PATH" "app catalog" "Downloading app catalog..."
   fi
   printf '%s\n' "$CATALOG_CACHE_PATH"
 }
@@ -317,6 +454,8 @@ fetch_catalog() {
 load_catalog_entry() {
   app_id=$1
   catalog_file=$2
+
+  clear_catalog_entry
 
   entry_data=$(
     awk -F '\t' -v app="$app_id" -v sep="$US" '
@@ -358,6 +497,77 @@ load_catalog_entry() {
   CAT_BUNDLE_URL=$1
   shift
   CAT_SHA256=$1
+}
+
+resolve_app_state() {
+  app_id=$1
+  catalog_file=$2
+
+  APP_INSTALLED_REVISION=$(state_get_field "$app_id" 2)
+  APP_INSTALLED_COMMAND=$(state_get_field "$app_id" 3)
+  APP_CATALOG_REVISION=
+
+  if load_catalog_entry "$app_id" "$catalog_file"; then
+    APP_CATALOG_REVISION=$CAT_REVISION
+    if [ -z "$APP_INSTALLED_REVISION" ]; then
+      APP_STATE=available
+    elif [ "$APP_INSTALLED_REVISION" = "$CAT_REVISION" ]; then
+      APP_STATE=installed
+    else
+      APP_STATE=update-available
+    fi
+    return 0
+  fi
+
+  if [ -n "$APP_INSTALLED_REVISION" ]; then
+    APP_STATE=local-only
+  else
+    APP_STATE=missing
+  fi
+}
+
+print_local_only_warning() {
+  app_id=$1
+  printf '%s\n' "$app_id is installed locally, but it is no longer in the current catalog." >&2
+}
+
+print_manager_update_continue_warning() {
+  printf '%s\n' "apfeller could not update itself right now. Continuing with the installed version." >&2
+}
+
+print_manager_update_check_warning() {
+  printf '%s\n' "apfeller could not check for updates right now. Continuing with the installed version." >&2
+}
+
+probe_latest_manager_version() {
+  require_tools_or_return curl || return 1
+
+  curl_error_path=$(mktemp "${TMPDIR:-/tmp}/apfeller-curl.XXXXXX")
+  progress_start spin "Checking for apfeller updates..."
+
+  set +e
+  effective_url=$(curl -fsSIL -o /dev/null -w '%{url_effective}' "$SELF_UPDATE_URL" 2>"$curl_error_path")
+  status=$?
+  if [ "$status" -ne 0 ] && [ "${APFELLER_INSTALL_URL+x}" = "x" ]; then
+    effective_url=$(curl -fsSL -o /dev/null -w '%{url_effective}' "$SELF_UPDATE_URL" 2>"$curl_error_path")
+    status=$?
+  fi
+  set -e
+
+  rm -f "$curl_error_path"
+  progress_abort
+
+  [ "$status" -eq 0 ] || return 1
+
+  version=$(printf '%s\n' "$effective_url" | sed -n 's#.*/download/v\([^/]*\)/[^/]*$#\1#p')
+  [ -n "$version" ] || return 2
+
+  printf '%s\n' "$version"
+}
+
+reexec_install_command() {
+  [ -x "$LOCAL_BIN_DIR/apfeller" ] || fail "apfeller updated itself, but could not continue. Run the install again."
+  APFELLER_SKIP_AUTO_SELF_UPDATE=1 exec "$LOCAL_BIN_DIR/apfeller" install "$@"
 }
 
 install_manager_completions() {
@@ -475,7 +685,7 @@ apply_shell_setup() {
 
 install_manager_from_archive() {
   archive_url=$1
-  require_tools curl tar
+  require_tools_or_return curl tar || return $?
 
   archive_path="$TMP_DIR/$MANAGER_ASSET_NAME"
   extract_dir="$TMP_DIR/manager"
@@ -483,17 +693,39 @@ install_manager_from_archive() {
   rm -rf "$extract_dir"
   mkdir -p "$extract_dir"
 
-  progress_start "Updating apfeller..."
-  download_to_path "$archive_url" "$archive_path" "manager archive"
-  tar -xzf "$archive_path" -C "$extract_dir"
+  if ! download_to_path "$archive_url" "$archive_path" "manager archive" "Downloading apfeller update..."; then
+    return 1
+  fi
+  progress_start spin "Updating apfeller..."
+  if ! tar -xzf "$archive_path" -C "$extract_dir" >/dev/null 2>&1; then
+    progress_abort
+    printf '%s\n' "The downloaded apfeller update looks incomplete. Please try again later." >&2
+    return 1
+  fi
 
-  [ -f "$extract_dir/bin/apfeller" ] || fail "The downloaded apfeller update looks incomplete. Please try again later."
+  if [ ! -f "$extract_dir/bin/apfeller" ]; then
+    progress_abort
+    printf '%s\n' "The downloaded apfeller update looks incomplete. Please try again later." >&2
+    return 1
+  fi
 
   ensure_dir "$LOCAL_BIN_DIR"
   ensure_dir "$CONFIG_DIR"
-  cp "$extract_dir/bin/apfeller" "$LOCAL_BIN_DIR/apfeller"
-  chmod +x "$LOCAL_BIN_DIR/apfeller"
-  install_manager_completions "$extract_dir"
+  if ! cp "$extract_dir/bin/apfeller" "$LOCAL_BIN_DIR/apfeller"; then
+    progress_abort
+    printf '%s\n' "apfeller could not update itself right now. Please try again later." >&2
+    return 1
+  fi
+  if ! chmod +x "$LOCAL_BIN_DIR/apfeller"; then
+    progress_abort
+    printf '%s\n' "apfeller could not update itself right now. Please try again later." >&2
+    return 1
+  fi
+  if ! install_manager_completions "$extract_dir"; then
+    progress_abort
+    printf '%s\n' "apfeller could not update itself right now. Please try again later." >&2
+    return 1
+  fi
 
   progress_abort
   if apply_shell_setup; then
@@ -502,6 +734,8 @@ install_manager_from_archive() {
     printf '%s\n' "Updated apfeller at $LOCAL_BIN_DIR/apfeller"
     printf '%s\n' "Run this once for the current shell: export PATH=\"$LOCAL_BIN_DIR:\$PATH\""
   fi
+
+  return 0
 }
 
 check_required_commands() {
@@ -769,8 +1003,8 @@ install_app() {
   ensure_dir "$(dirname "$store_path")"
   ensure_command_slot_available "$command_name"
 
-  progress_start "Installing $CAT_ID..."
-  download_to_path "$bundle_url" "$archive_path" "$CAT_ID app bundle"
+  download_to_path "$bundle_url" "$archive_path" "$CAT_ID app bundle" "Downloading $CAT_ID..."
+  progress_start spin "Installing $CAT_ID..."
   actual_sha=$(shasum -a 256 "$archive_path" | awk '{print $1}')
   if [ "$actual_sha" != "$CAT_SHA256" ]; then
     fail "The downloaded files for $CAT_ID could not be verified. Please try again later."
@@ -802,7 +1036,48 @@ install_app() {
   fi
 
   progress_abort
-  printf 'Installed %s %s\n' "$CAT_ID" "$CAT_REVISION"
+  if [ -n "$previous_revision" ] && [ "$previous_revision" != "$CAT_REVISION" ]; then
+    printf 'Updated %s %s -> %s\n' "$CAT_ID" "$previous_revision" "$CAT_REVISION"
+  else
+    printf 'Installed %s %s\n' "$CAT_ID" "$CAT_REVISION"
+  fi
+}
+
+ensure_manager_current_for_install() {
+  latest_version=
+  probe_status=0
+
+  [ "${APFELLER_SKIP_AUTO_SELF_UPDATE:-0}" = "1" ] && return 0
+
+  set +e
+  latest_version=$(probe_latest_manager_version)
+  probe_status=$?
+  set -e
+
+  if [ "$probe_status" -eq 0 ]; then
+    if [ "$latest_version" = "$APFELLER_MANAGER_VERSION" ]; then
+      return 0
+    fi
+
+    if install_manager_from_archive "$SELF_UPDATE_URL"; then
+      reexec_install_command "$@"
+    fi
+
+    print_manager_update_continue_warning
+    return 0
+  fi
+
+  if [ "$probe_status" -eq 2 ] && [ "${APFELLER_INSTALL_URL+x}" = "x" ]; then
+    if install_manager_from_archive "$SELF_UPDATE_URL"; then
+      reexec_install_command "$@"
+    fi
+
+    print_manager_update_continue_warning
+    return 0
+  fi
+
+  print_manager_update_check_warning
+  return 0
 }
 
 uninstall_app() {
@@ -914,7 +1189,7 @@ apfeller_copy() {
 runtime_query_response() {
   prompt=$1
 
-  progress_start "Running $APFELLER_APP_COMMAND..."
+  progress_start spin "Running $APFELLER_APP_COMMAND..."
   set +e
   response=$(apfeller_query "$APFELLER_PROMPT_MAX_OUTPUT_TOKENS" "$APFELLER_PROMPT_SYSTEM" "$prompt")
   status=$?
@@ -1448,11 +1723,24 @@ cmd_list() {
       return 0
     fi
 
-    awk -F '\t' '
-      NR > 1 {
-        printf "%s\t%s\tinstalled\n", $1, $2
-      }
-    ' "$STATE_PATH"
+    catalog_file=$(fetch_catalog)
+
+    while IFS="$TAB" read -r app_id installed_revision command_name installed_at; do
+      [ "$app_id" = "id" ] && continue
+      resolve_app_state "$app_id" "$catalog_file"
+      case "$APP_STATE" in
+        installed)
+          printf '%s\t%s\tinstalled\t%s\n' "$app_id" "$installed_revision" "$APP_CATALOG_REVISION"
+          ;;
+        update-available)
+          printf '%s\t%s\tupdate-available\t%s\n' "$app_id" "$installed_revision" "$APP_CATALOG_REVISION"
+          ;;
+        local-only)
+          printf '%s\t%s\tlocal-only\t\n' "$app_id" "$installed_revision"
+          ;;
+      esac
+    done <"$STATE_PATH"
+
     return 0
   fi
 
@@ -1461,10 +1749,13 @@ cmd_list() {
   catalog_file=$(fetch_catalog)
   awk -F '\t' 'NR > 1 { print $1 "\t" $2 "\t" $3 }' "$catalog_file" |
     while IFS="$TAB" read -r app_id revision summary; do
-      if state_has_app "$app_id"; then
+      installed_revision=$(state_get_field "$app_id" 2)
+      if [ -z "$installed_revision" ]; then
+        status="available"
+      elif [ "$installed_revision" = "$revision" ]; then
         status="installed"
       else
-        status="available"
+        status="update-available"
       fi
       printf '%s\t%s\t%s\t%s\n' "$app_id" "$revision" "$status" "$summary"
     done
@@ -1494,9 +1785,21 @@ cmd_info() {
 cmd_install() {
   [ $# -gt 0 ] || fail "Usage: apfeller install <app>..."
 
+  ensure_manager_current_for_install "$@"
   catalog_file=$(fetch_catalog)
   for app_id in "$@"; do
-    install_app "$app_id" "$catalog_file"
+    resolve_app_state "$app_id" "$catalog_file"
+    case "$APP_STATE" in
+      available|update-available)
+        install_app "$app_id" "$catalog_file"
+        ;;
+      installed)
+        printf 'Already installed %s %s\n' "$app_id" "$APP_INSTALLED_REVISION"
+        ;;
+      *)
+        fail "App not found in the current catalog: $app_id. Run 'apfeller list' to see what's available."
+        ;;
+    esac
   done
 }
 
@@ -1514,7 +1817,7 @@ cmd_update() {
   case "$1" in
     --self)
       [ $# -eq 1 ] || fail "Usage: apfeller update --self"
-      install_manager_from_archive "$SELF_UPDATE_URL"
+      install_manager_from_archive "$SELF_UPDATE_URL" || exit 1
       ;;
     --all)
       [ $# -eq 1 ] || fail "Usage: apfeller update --all"
@@ -1525,13 +1828,41 @@ cmd_update() {
       catalog_file=$(fetch_catalog)
       while IFS="$TAB" read -r app_id revision command_name installed_at; do
         [ "$app_id" = "id" ] && continue
-        install_app "$app_id" "$catalog_file"
+        resolve_app_state "$app_id" "$catalog_file"
+        case "$APP_STATE" in
+          update-available)
+            install_app "$app_id" "$catalog_file"
+            ;;
+          installed)
+            printf 'Already up to date %s %s\n' "$app_id" "$APP_INSTALLED_REVISION"
+            ;;
+          local-only)
+            print_local_only_warning "$app_id"
+            ;;
+        esac
       done <"$STATE_PATH"
       ;;
     *)
       catalog_file=$(fetch_catalog)
       for app_id in "$@"; do
-        install_app "$app_id" "$catalog_file"
+        resolve_app_state "$app_id" "$catalog_file"
+        case "$APP_STATE" in
+          update-available)
+            install_app "$app_id" "$catalog_file"
+            ;;
+          installed)
+            printf 'Already up to date %s %s\n' "$app_id" "$APP_INSTALLED_REVISION"
+            ;;
+          available)
+            fail "$app_id is not installed. Run 'apfeller install $app_id' first."
+            ;;
+          local-only)
+            print_local_only_warning "$app_id"
+            ;;
+          *)
+            fail "App not found in the current catalog: $app_id. Run 'apfeller list' to see what's available."
+            ;;
+        esac
       done
       ;;
   esac
@@ -1559,7 +1890,11 @@ cmd_doctor() {
   printf 'zsh_init\t%s\n' "$(status_for_path "$ZSH_INIT_PATH")"
   printf 'fish_completion_dir\t%s\n' "$(status_for_path "$FISH_COMPLETION_DIR")"
   printf 'zsh_completion_dir\t%s\n' "$(status_for_path "$ZSH_COMPLETION_DIR")"
-  printf 'apfel\t%s\n' "$(command_exists apfel && printf present || printf missing)"
+  if command_exists apfel; then
+    printf 'apfel\tok\n'
+  else
+    printf 'apfel\twarn\tInstall with: brew install Arthur-Ficial/tap/apfel\n'
+  fi
   printf 'curl\t%s\n' "$(command_exists curl && printf present || printf missing)"
   printf 'tar\t%s\n' "$(command_exists tar && printf present || printf missing)"
   printf 'shasum\t%s\n' "$(command_exists shasum && printf present || printf missing)"

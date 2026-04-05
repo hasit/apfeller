@@ -14,23 +14,133 @@ ZSH_INIT_PATH=${APFELLER_ZSH_INIT_PATH:-"$CONFIG_DIR/init.zsh"}
 ASSET_NAME=${APFELLER_MANAGER_ASSET_NAME:-apfeller.tar.gz}
 PROGRESS_PID=
 PROGRESS_MESSAGE=
+PROGRESS_MODE=
+PROGRESS_CHARSET=
+PROGRESS_DELAY_SECONDS=0.18
+PROGRESS_INTERVAL_SECONDS=0.10
 
 ensure_dir() {
   mkdir -p "$1"
 }
 
-progress_start() {
-  PROGRESS_MESSAGE=$1
+progress_can_render() {
+  [ -t 2 ] || return 1
+  [ "${TERM:-}" != "dumb" ] || return 1
+}
 
-  [ -t 2 ] || return 0
+progress_detect_charset() {
+  locale=${LC_ALL:-${LC_CTYPE:-${LANG:-}}}
+  locale=$(printf '%s' "$locale" | tr '[:lower:]' '[:upper:]')
+
+  case "$locale" in
+    *UTF-8*|*UTF8*)
+      printf '%s\n' "unicode"
+      ;;
+    *)
+      printf '%s\n' "ascii"
+      ;;
+  esac
+}
+
+progress_spin_frame() {
+  charset=$1
+  step=$2
+
+  if [ "$charset" = "unicode" ]; then
+    case $((step % 10)) in
+      0) printf '%s' '⠋' ;;
+      1) printf '%s' '⠙' ;;
+      2) printf '%s' '⠹' ;;
+      3) printf '%s' '⠸' ;;
+      4) printf '%s' '⠼' ;;
+      5) printf '%s' '⠴' ;;
+      6) printf '%s' '⠦' ;;
+      7) printf '%s' '⠧' ;;
+      8) printf '%s' '⠇' ;;
+      *) printf '%s' '⠏' ;;
+    esac
+    return 0
+  fi
+
+  case $((step % 5)) in
+    0) printf '%s' '.  ' ;;
+    1) printf '%s' '.. ' ;;
+    2) printf '%s' '...' ;;
+    3) printf '%s' '.. ' ;;
+    *) printf '%s' '.  ' ;;
+  esac
+}
+
+progress_bar_frame() {
+  charset=$1
+  step=$2
+
+  if [ "$charset" = "unicode" ]; then
+    case $((step % 10)) in
+      0) segment='███     ' ;;
+      1) segment=' ███    ' ;;
+      2) segment='  ███   ' ;;
+      3) segment='   ███  ' ;;
+      4) segment='    ███ ' ;;
+      5) segment='     ███' ;;
+      6) segment='    ███ ' ;;
+      7) segment='   ███  ' ;;
+      8) segment='  ███   ' ;;
+      *) segment=' ███    ' ;;
+    esac
+  else
+    case $((step % 10)) in
+      0) segment='###     ' ;;
+      1) segment=' ###    ' ;;
+      2) segment='  ###   ' ;;
+      3) segment='   ###  ' ;;
+      4) segment='    ### ' ;;
+      5) segment='     ###' ;;
+      6) segment='    ### ' ;;
+      7) segment='   ###  ' ;;
+      8) segment='  ###   ' ;;
+      *) segment=' ###    ' ;;
+    esac
+  fi
+
+  printf '[%s]' "$segment"
+}
+
+progress_frame() {
+  mode=$1
+  charset=$2
+  step=$3
+
+  case "$mode" in
+    bar)
+      progress_bar_frame "$charset" "$step"
+      ;;
+    *)
+      progress_spin_frame "$charset" "$step"
+      ;;
+  esac
+}
+
+progress_start() {
+  mode=$1
+  message=$2
+
+  progress_abort
+  PROGRESS_MODE=$mode
+  PROGRESS_MESSAGE=$message
+  PROGRESS_CHARSET=$(progress_detect_charset)
+
+  progress_can_render || return 0
 
   (
     trap 'exit 0' INT TERM
+    sleep "$PROGRESS_DELAY_SECONDS"
+    step=0
     while :; do
-      for frame in '-' '\\' '|' '/'; do
-        printf '\r[%s] %s' "$frame" "$PROGRESS_MESSAGE" >&2
-        sleep 0.1
-      done
+      frame=$(progress_frame "$PROGRESS_MODE" "$PROGRESS_CHARSET" "$step")
+      printf '\r\033[2K%s %s' "$PROGRESS_MESSAGE" "$frame" >&2
+      step=$((step + 1))
+      sleep "$PROGRESS_INTERVAL_SECONDS"
     done
   ) &
   PROGRESS_PID=$!
@@ -43,11 +153,13 @@ progress_abort() {
     PROGRESS_PID=
   fi
 
-  if [ -t 2 ]; then
+  if progress_can_render; then
     printf '\r\033[2K' >&2
   fi
 
   PROGRESS_MESSAGE=
+  PROGRESS_MODE=
+  PROGRESS_CHARSET=
 }
 
 print_download_failure_help() {
@@ -73,12 +185,17 @@ print_download_failure_help() {
 download_to_path() {
   url=$1
   output_path=$2
+  progress_message=$3
   curl_error_path=$(mktemp "${TMPDIR:-/tmp}/apfeller-curl.XXXXXX")
+
+  progress_start bar "$progress_message"
 
   set +e
   curl -fsSL "$url" -o "$output_path" 2>"$curl_error_path"
   status=$?
   set -e
+
+  progress_abort
 
   if [ "$status" -eq 0 ]; then
     rm -f "$curl_error_path"
@@ -188,6 +305,14 @@ install_manager_completions() {
   fi
 }
 
+print_apfel_note_if_missing() {
+  if command -v apfel >/dev/null 2>&1; then
+    return 0
+  fi
+
+  printf '%s\n' "apfel is not installed yet. Some apps need it. Install it with: brew install Arthur-Ficial/tap/apfel"
+}
+
 if ! command -v curl >/dev/null 2>&1; then
   printf '%s\n' "apfeller needs curl to install. Install curl and try again." >&2
   exit 1
@@ -212,8 +337,8 @@ ensure_dir "$LOCAL_BIN_DIR"
 ensure_dir "$CONFIG_DIR"
 ensure_dir "$extract_dir"
 
-progress_start "Installing apfeller..."
-download_to_path "$asset_url" "$archive_path"
+download_to_path "$asset_url" "$archive_path" "Downloading apfeller..."
+progress_start spin "Installing apfeller..."
 tar -xzf "$archive_path" -C "$extract_dir"
 
 cp "$extract_dir/bin/apfeller" "$LOCAL_BIN_DIR/apfeller"
@@ -231,6 +356,7 @@ case "$shell_name" in
   *)
     progress_abort
     printf '%s\n' "Installed apfeller to $LOCAL_BIN_DIR/apfeller"
+    print_apfel_note_if_missing
     printf '%s\n' "Run this once for the current shell: export PATH=\"$LOCAL_BIN_DIR:\$PATH\""
     exit 0
     ;;
@@ -238,3 +364,4 @@ esac
 
 progress_abort
 printf '%s\n' "Installed apfeller to $LOCAL_BIN_DIR/apfeller"
+print_apfel_note_if_missing
