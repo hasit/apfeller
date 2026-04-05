@@ -19,7 +19,7 @@ sh "$ROOT_DIR/scripts/package_release.sh" --output-dir "$dist_dir" >/dev/null
 sh "$ROOT_DIR/scripts/package_catalog.sh" --output-dir "$dist_dir" --app-dir "$ROOT_DIR/fixtures/apps" --bundle-base-url "file://$dist_dir" >/dev/null
 mkdir -p "$extract_dir"
 
-for app in cmd oneliner define; do
+for app in fixture-cmd fixture-oneliner fixture-define; do
   app_dir="$extract_dir/$app"
   app_archive=$(
     awk -F '\t' -v app_id="$app" '

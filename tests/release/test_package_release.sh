@@ -32,9 +32,9 @@ PATH="$stub_dir:$PATH" sh "$ROOT_DIR/scripts/package_catalog.sh" --output-dir "$
 assert_file_exists "$dist_dir/apfeller.tar.gz"
 assert_file_exists "$dist_dir/apfeller-catalog.tsv"
 
-cmd_bundle=$(find "$dist_dir" -maxdepth 1 -name 'cmd-*.tar.gz' | head -n 1)
-define_bundle=$(find "$dist_dir" -maxdepth 1 -name 'define-*.tar.gz' | head -n 1)
-oneliner_bundle=$(find "$dist_dir" -maxdepth 1 -name 'oneliner-*.tar.gz' | head -n 1)
+cmd_bundle=$(find "$dist_dir" -maxdepth 1 -name 'fixture-cmd-*.tar.gz' | head -n 1)
+define_bundle=$(find "$dist_dir" -maxdepth 1 -name 'fixture-define-*.tar.gz' | head -n 1)
+oneliner_bundle=$(find "$dist_dir" -maxdepth 1 -name 'fixture-oneliner-*.tar.gz' | head -n 1)
 
 assert_file_exists "$cmd_bundle"
 assert_file_exists "$define_bundle"
@@ -69,28 +69,28 @@ assert_contains "$cmd_manifest" 'APFELLER_APP_REVISION=' "compiled manifests sho
 assert_not_contains "$cmd_manifest" 'APFELLER_APP_VERSION=' "compiled manifests should not include manual app versions"
 assert_not_contains "$cmd_manifest" 'APFELLER_HOOK_LOCAL_RUN=' "compiled manifests should not include local-run hooks"
 
-if awk -F '\t' 'NR > 1 && $1 == "port" { found = 1 } END { exit found ? 0 : 1 }' "$dist_dir/apfeller-catalog.tsv"; then
-  printf '%s\n' "fixture catalog should not include port" >&2
+if awk -F '\t' 'NR > 1 && $1 == "cmd" { found = 1 } END { exit found ? 0 : 1 }' "$dist_dir/apfeller-catalog.tsv"; then
+  printf '%s\n' "fixture catalog should not include published app ids" >&2
   exit 1
 fi
 
-original_revision=$(awk -F '\t' 'NR > 1 && $1 == "cmd" { print $2; exit }' "$dist_dir/apfeller-catalog.tsv")
+original_revision=$(awk -F '\t' 'NR > 1 && $1 == "fixture-cmd" { print $2; exit }' "$dist_dir/apfeller-catalog.tsv")
 
 modified_repo="$tmp_dir/repo-modified"
 cp -R "$ROOT_DIR" "$modified_repo"
 
-cat >"$modified_repo/fixtures/apps/cmd/app.toml" <<'EOF'
-id = "cmd"
-summary = "Turn natural language into a shell command with apfel, with an updated fixture summary."
+cat >"$modified_repo/fixtures/apps/fixture-cmd/app.toml" <<'EOF'
+id = "fixture-cmd"
+summary = "Fixture app that turns natural language into a shell command, with an updated fixture summary."
 description = "Generate a single macOS shell command from a natural language request. Supports copy to clipboard and optional execution after confirmation."
-command = "cmd"
+command = "fixture-cmd"
 kind = "ai-command"
 requires_commands = ["apfel", "pbcopy"]
 supported_shells = ["fish", "zsh"]
 
 [help]
-usage = 'cmd [OPTIONS] "what you want to do"'
-examples = ['cmd "find all .log files modified today"', 'cmd -x "what process is using port 3000"', 'cmd -c "list merged git branches"']
+usage = 'fixture-cmd [OPTIONS] "what you want to do"'
+examples = ['fixture-cmd "find all .log files modified today"', 'fixture-cmd -x "what process is using port 3000"', 'fixture-cmd -c "list merged git branches"']
 
 [input]
 mode = "rest"
@@ -109,29 +109,29 @@ mode = "shell_command"
 EOF
 
 PATH="$stub_dir:$PATH" APFELLER_ROOT_DIR="$modified_repo" sh "$ROOT_DIR/scripts/package_catalog.sh" --output-dir "$tmp_dir/dist-modified" --app-dir "$modified_repo/fixtures/apps" --bundle-base-url "file://$tmp_dir/dist-modified"
-modified_revision=$(awk -F '\t' 'NR > 1 && $1 == "cmd" { print $2; exit }' "$tmp_dir/dist-modified/apfeller-catalog.tsv")
+modified_revision=$(awk -F '\t' 'NR > 1 && $1 == "fixture-cmd" { print $2; exit }' "$tmp_dir/dist-modified/apfeller-catalog.tsv")
 
 if [ "$original_revision" = "$modified_revision" ]; then
-  printf '%s\n' "expected cmd revision to change when app.toml changes" >&2
+  printf '%s\n' "expected fixture-cmd revision to change when app.toml changes" >&2
   exit 1
 fi
 
 hook_repo="$tmp_dir/repo-hook"
 cp -R "$ROOT_DIR" "$hook_repo"
-mkdir -p "$hook_repo/fixtures/apps/cmd/hooks"
+mkdir -p "$hook_repo/fixtures/apps/fixture-cmd/hooks"
 
-cat >"$hook_repo/fixtures/apps/cmd/app.toml" <<'EOF'
-id = "cmd"
-summary = "Turn natural language into a shell command with apfel."
+cat >"$hook_repo/fixtures/apps/fixture-cmd/app.toml" <<'EOF'
+id = "fixture-cmd"
+summary = "Fixture app that turns natural language into a shell command."
 description = "Generate a single macOS shell command from a natural language request. Supports copy to clipboard and optional execution after confirmation."
-command = "cmd"
+command = "fixture-cmd"
 kind = "ai-command"
 requires_commands = ["apfel", "pbcopy"]
 supported_shells = ["fish", "zsh"]
 
 [help]
-usage = 'cmd [OPTIONS] "what you want to do"'
-examples = ['cmd "find all .log files modified today"', 'cmd -x "what process is using port 3000"', 'cmd -c "list merged git branches"']
+usage = 'fixture-cmd [OPTIONS] "what you want to do"'
+examples = ['fixture-cmd "find all .log files modified today"', 'fixture-cmd -x "what process is using port 3000"', 'fixture-cmd -c "list merged git branches"']
 
 [input]
 mode = "rest"
@@ -152,24 +152,24 @@ mode = "shell_command"
 pre_run = "hooks/pre_run.sh"
 EOF
 
-cat >"$hook_repo/fixtures/apps/cmd/hooks/pre_run.sh" <<'EOF'
+cat >"$hook_repo/fixtures/apps/fixture-cmd/hooks/pre_run.sh" <<'EOF'
 #!/bin/sh
 exit 0
 EOF
 
 PATH="$stub_dir:$PATH" APFELLER_ROOT_DIR="$hook_repo" sh "$ROOT_DIR/scripts/package_catalog.sh" --output-dir "$tmp_dir/dist-hook-one" --app-dir "$hook_repo/fixtures/apps" --bundle-base-url "file://$tmp_dir/dist-hook-one"
-hook_revision_one=$(awk -F '\t' 'NR > 1 && $1 == "cmd" { print $2; exit }' "$tmp_dir/dist-hook-one/apfeller-catalog.tsv")
+hook_revision_one=$(awk -F '\t' 'NR > 1 && $1 == "fixture-cmd" { print $2; exit }' "$tmp_dir/dist-hook-one/apfeller-catalog.tsv")
 
-cat >"$hook_repo/fixtures/apps/cmd/hooks/pre_run.sh" <<'EOF'
+cat >"$hook_repo/fixtures/apps/fixture-cmd/hooks/pre_run.sh" <<'EOF'
 #!/bin/sh
 printf '%s\n' "fixture hook changed" >/dev/null
 exit 0
 EOF
 
 PATH="$stub_dir:$PATH" APFELLER_ROOT_DIR="$hook_repo" sh "$ROOT_DIR/scripts/package_catalog.sh" --output-dir "$tmp_dir/dist-hook-two" --app-dir "$hook_repo/fixtures/apps" --bundle-base-url "file://$tmp_dir/dist-hook-two"
-hook_revision_two=$(awk -F '\t' 'NR > 1 && $1 == "cmd" { print $2; exit }' "$tmp_dir/dist-hook-two/apfeller-catalog.tsv")
+hook_revision_two=$(awk -F '\t' 'NR > 1 && $1 == "fixture-cmd" { print $2; exit }' "$tmp_dir/dist-hook-two/apfeller-catalog.tsv")
 
 if [ "$hook_revision_one" = "$hook_revision_two" ]; then
-  printf '%s\n' "expected cmd revision to change when hook content changes" >&2
+  printf '%s\n' "expected fixture-cmd revision to change when hook content changes" >&2
   exit 1
 fi

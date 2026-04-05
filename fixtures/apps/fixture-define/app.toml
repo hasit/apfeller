@@ -1,14 +1,14 @@
-id = "define"
-summary = "Define a word or phrase with apfel."
-description = "Tiny multilingual dictionary lookup with fixed structured output. Supports input and output language selection plus clipboard copy."
-command = "define"
+id = "fixture-define"
+summary = "Fixture app that defines a word or phrase with apfel."
+description = "Test-only fixture with fixed structured dictionary output. Supports input and output language selection plus clipboard copy."
+command = "fixture-define"
 kind = "ai-text"
 requires_commands = ["apfel", "pbcopy"]
 supported_shells = ["fish", "zsh"]
 
 [help]
-usage = "define [OPTIONS] WORD_OR_PHRASE"
-examples = ["define serendipity", "define hola", "define -o es resilience", "define -i ja -o en 侘び寂び"]
+usage = "fixture-define [OPTIONS] WORD_OR_PHRASE"
+examples = ["fixture-define serendipity", "fixture-define hola", "fixture-define -o es resilience", "fixture-define -i ja -o en 侘び寂び"]
 
 [input]
 mode = "rest"

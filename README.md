@@ -1,58 +1,33 @@
 # apfeller
 
-`apfeller` is a manager + runtime for small shell apps built on
+`apfeller` is the manager + runtime repo for small shell apps built on
 [apfel](https://apfel.franzai.com/) ([source repo](https://github.com/Arthur-Ficial/apfel)).
-The AI apps run fully local on your Mac with zero API cost: no API bill, no API
+The apps run fully local on your Mac with zero API cost: no API bill, no API
 keys, and no cloud round-trip.
 
-It installs a lightweight manager first, then lets users opt into focused apps.
-The AI apps are intentionally designed for small inputs, small outputs, and
-instant single-turn results so they fit apfel's fixed 4,096-token combined
-context window.
+End-user docs live at [hasit.github.io/apfeller](https://hasit.github.io/apfeller/).
 
-## What v1 includes
+## Repo Split
 
-- A POSIX `sh`-based `apfeller` manager
-- A shell app framework with shared `app.toml` validation and packaging tooling
-- Compiled runtime manifests plus generated wrappers and completions at install time
-- Portable POSIX shell app bundles with optional prompt and validation hooks
-- A default remote app catalog published from `hasit/apfeller-apps`
-- Fish and zsh integration
-- A one-line installer for the manager
+- `apfeller`: manager/runtime, installer, shell integration, packaging helpers,
+  fixture apps, and tests.
+- `apfeller-apps`: published app definitions, catalog generation, and app bundle
+  releases.
 
-## Install
+The manager fetches its app catalog from:
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/hasit/apfeller/main/install.sh | sh
-```
-
-That installs only the manager. Apps are installed separately:
-
-```sh
-apfeller list
-apfeller install cmd oneliner
-```
-
-The manager fetches its app catalog from the stable raw URL
 `https://raw.githubusercontent.com/hasit/apfeller-apps/main/catalog/latest.tsv`
+
 by default, then downloads the exact bundle URLs listed in that catalog.
 
-## Commands
+## What This Repo Contains
 
-```text
-apfeller list [--installed]
-apfeller info <app>
-apfeller install <app>...
-apfeller uninstall <app>...
-apfeller update --self | --all | <app>...
-apfeller doctor
-```
-
-## AI Apps
-
-- `cmd`: natural language to a single shell command via `apfel`
-- `oneliner`: natural language to a compact UNIX pipeline via `apfel`
-- `define`: tiny multilingual dictionary lookup via `apfel`
+- A POSIX `sh`-based `apfeller` manager
+- Shell integration for fish and zsh
+- Shared `app.toml` validation and packaging tooling
+- Compiled runtime manifests plus generated wrappers and completions
+- Fixture apps under `fixtures/apps` for local testing
+- A one-line installer for the manager
 
 ## Development
 
@@ -76,16 +51,26 @@ tests/e2e/test_manager.sh
 tests/e2e/test_checksum_mismatch.sh
 ```
 
-Package local release assets:
+## Packaging
+
+Package the manager release asset:
 
 ```sh
 scripts/package_release.sh --output-dir dist
-scripts/package_catalog.sh --output-dir dist --app-dir fixtures/apps --bundle-base-url "file://$PWD/dist"
 ```
 
 That produces:
 
 - `dist/apfeller.tar.gz`
+
+Package a local fixture catalog and fixture bundles for testing:
+
+```sh
+scripts/package_catalog.sh --output-dir dist --app-dir fixtures/apps --bundle-base-url "file://$PWD/dist"
+```
+
+That produces:
+
 - `dist/apfeller-catalog.tsv`
 - `dist/<app>-<revision>.tar.gz` for fixture app bundles
 
@@ -93,6 +78,5 @@ Each app bundle now contains its `app.toml`, a compiled runtime manifest, args
 metadata, examples metadata, and any declared hooks. Installed commands are
 framework-generated wrappers that call `apfeller __run-app`.
 
-More detail lives in [docs/install.md](/Users/hasit/github/apfeller/docs/install.md),
-[docs/authoring.md](/Users/hasit/github/apfeller/docs/authoring.md), and
-[docs/releasing.md](/Users/hasit/github/apfeller/docs/releasing.md).
+Real published apps no longer live in this repo. Use `apfeller-apps` for app
+catalog and bundle publication work.

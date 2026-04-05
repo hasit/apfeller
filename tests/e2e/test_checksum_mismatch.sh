@@ -22,7 +22,7 @@ chmod +x "$stub_dir/apfel"
 
 bundle_path=$(
   awk -F '\t' '
-    NR > 1 && $1 == "cmd" {
+    NR > 1 && $1 == "fixture-cmd" {
       sub(/^file:\/\//, "", $9)
       print $9
       exit
@@ -43,7 +43,7 @@ output=$(
   HOME="$home_dir" \
   PATH="$home_dir/.local/bin:$stub_dir:$PATH" \
   APFELLER_CATALOG_URL="$catalog_url" \
-  apfeller install cmd 2>&1
+  apfeller install fixture-cmd 2>&1
 )
 status=$?
 set -e
@@ -53,4 +53,4 @@ if [ "$status" -eq 0 ]; then
   exit 1
 fi
 
-assert_contains "$output" 'Checksum mismatch for cmd' "install should fail when the bundle checksum changes"
+assert_contains "$output" 'Checksum mismatch for fixture-cmd' "install should fail when the bundle checksum changes"

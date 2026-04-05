@@ -36,19 +36,19 @@ run_invalid_case() {
 
 run_invalid_case \
   "invalid kind/output combination" \
-  'cat >"$1/fixtures/apps/cmd/app.toml" <<'"'"'EOF'"'"'
-id = "cmd"
+  'cat >"$1/fixtures/apps/fixture-cmd/app.toml" <<'"'"'EOF'"'"'
+id = "fixture-cmd"
 version = "0.1.0"
 summary = "broken"
 description = "broken"
-command = "cmd"
+command = "fixture-cmd"
 kind = "ai-command"
 requires_commands = ["apfel"]
 supported_shells = ["fish", "zsh"]
 
 [help]
-usage = "cmd TEST"
-examples = ["cmd test"]
+usage = "fixture-cmd TEST"
+examples = ["fixture-cmd test"]
 
 [input]
 mode = "rest"
@@ -69,19 +69,19 @@ EOF' \
 
 run_invalid_case \
   "duplicate long flag" \
-  'cat >"$1/fixtures/apps/define/app.toml" <<'"'"'EOF'"'"'
-id = "define"
+  'cat >"$1/fixtures/apps/fixture-define/app.toml" <<'"'"'EOF'"'"'
+id = "fixture-define"
 version = "0.1.0"
 summary = "broken"
 description = "broken"
-command = "define"
+command = "fixture-define"
 kind = "ai-text"
 requires_commands = ["apfel"]
 supported_shells = ["fish", "zsh"]
 
 [help]
-usage = "define TEST"
-examples = ["define hola"]
+usage = "fixture-define TEST"
+examples = ["fixture-define hola"]
 
 [input]
 mode = "rest"
@@ -119,19 +119,19 @@ EOF' \
 
 run_invalid_case \
   "reserved arg name" \
-  'cat >"$1/fixtures/apps/define/app.toml" <<'"'"'EOF'"'"'
-id = "define"
+  'cat >"$1/fixtures/apps/fixture-define/app.toml" <<'"'"'EOF'"'"'
+id = "fixture-define"
 version = "0.1.0"
 summary = "broken"
 description = "broken"
-command = "define"
+command = "fixture-define"
 kind = "ai-text"
 requires_commands = ["apfel"]
 supported_shells = ["fish", "zsh"]
 
 [help]
-usage = "define TEST"
-examples = ["define hola"]
+usage = "fixture-define TEST"
+examples = ["fixture-define hola"]
 
 [input]
 mode = "rest"
@@ -160,24 +160,24 @@ EOF' \
 
 run_invalid_case \
   "unsupported nested section" \
-  'printf "%s\n" "[help.extra]" >>"$1/fixtures/apps/cmd/app.toml"' \
+  'printf "%s\n" "[help.extra]" >>"$1/fixtures/apps/fixture-cmd/app.toml"' \
   "Unsupported section syntax"
 
 run_invalid_case \
   "removed local-command kind" \
-  'cat >"$1/fixtures/apps/cmd/app.toml" <<'"'"'EOF'"'"'
-id = "cmd"
+  'cat >"$1/fixtures/apps/fixture-cmd/app.toml" <<'"'"'EOF'"'"'
+id = "fixture-cmd"
 version = "0.1.0"
 summary = "broken"
 description = "broken"
-command = "cmd"
+command = "fixture-cmd"
 kind = "local-command"
 requires_commands = ["apfel"]
 supported_shells = ["fish", "zsh"]
 
 [help]
-usage = "cmd TEST"
-examples = ["cmd test"]
+usage = "fixture-cmd TEST"
+examples = ["fixture-cmd test"]
 
 [input]
 mode = "rest"
@@ -191,19 +191,19 @@ EOF' \
 
 run_invalid_case \
   "removed local_passthrough output" \
-  'cat >"$1/fixtures/apps/cmd/app.toml" <<'"'"'EOF'"'"'
-id = "cmd"
+  'cat >"$1/fixtures/apps/fixture-cmd/app.toml" <<'"'"'EOF'"'"'
+id = "fixture-cmd"
 version = "0.1.0"
 summary = "broken"
 description = "broken"
-command = "cmd"
+command = "fixture-cmd"
 kind = "ai-command"
 requires_commands = ["apfel"]
 supported_shells = ["fish", "zsh"]
 
 [help]
-usage = "cmd TEST"
-examples = ["cmd test"]
+usage = "fixture-cmd TEST"
+examples = ["fixture-cmd test"]
 
 [input]
 mode = "rest"
@@ -224,19 +224,19 @@ EOF' \
 
 run_invalid_case \
   "removed hooks.local_run key" \
-  'cat >"$1/fixtures/apps/cmd/app.toml" <<'"'"'EOF'"'"'
-id = "cmd"
+  'cat >"$1/fixtures/apps/fixture-cmd/app.toml" <<'"'"'EOF'"'"'
+id = "fixture-cmd"
 version = "0.1.0"
 summary = "broken"
 description = "broken"
-command = "cmd"
+command = "fixture-cmd"
 kind = "ai-command"
 requires_commands = ["apfel"]
 supported_shells = ["fish", "zsh"]
 
 [help]
-usage = "cmd TEST"
-examples = ["cmd test"]
+usage = "fixture-cmd TEST"
+examples = ["fixture-cmd test"]
 
 [input]
 mode = "rest"

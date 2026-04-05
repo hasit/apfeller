@@ -1,10 +1,22 @@
-# Install
+---
+title: Install apfeller
+permalink: /install/
+---
 
-`apfeller` packages small shell apps built on
-[apfel](https://apfel.franzai.com/). The AI apps run fully local on your Mac
-with zero API cost: no API bill, no API keys, and no cloud round-trip. They are
-intentionally designed for small inputs, small outputs, and instant single-turn
-results inside apfel's fixed 4,096-token combined window.
+# Install apfeller
+
+`apfeller` installs the manager first. After that, you can browse the catalog
+and install only the apps you want.
+
+## Before You Start
+
+- `apfeller` is for macOS.
+- Fish and zsh get automatic shell integration.
+- The current AI apps depend on
+  [apfel](https://apfel.franzai.com/), so install that first if you plan to use
+  `cmd`, `oneliner`, or `define`.
+
+## Install the Manager
 
 The public install path is:
 
@@ -21,29 +33,37 @@ What it does:
 - If the shell cannot be detected, installs the binary anyway and prints one
   manual `PATH` command instead of guessing
 
-App discovery:
+## Check the Install
 
-- By default `apfeller` reads `https://raw.githubusercontent.com/hasit/apfeller-apps/main/catalog/latest.tsv`
-- You can override that with `APFELLER_CATALOG_URL`
+Verify that the manager is available:
 
-Installed paths:
+```sh
+apfeller --version
+apfeller doctor
+```
+
+Then browse the catalog and install your first app:
+
+```sh
+apfeller list
+apfeller install cmd
+```
+
+## Installed Locations
 
 - `~/.local/bin/apfeller`
 - `~/.config/apfeller/init.zsh`
 - `~/.config/apfeller/completions/zsh/`
 - `~/.config/fish/conf.d/apfeller.fish`
 - `~/.config/fish/completions/`
-
-App payload paths:
-
 - `~/.local/share/apfeller/store/<app>/<revision>/`
 - `~/.local/share/apfeller/state.tsv`
 
-Installed app bundles contain compiled framework metadata. `apfeller` generates
-the command wrapper and fish/zsh completions during install, so app archives do
-not need to ship handwritten entrypoint scripts.
+## Advanced
 
-Supported shells in v1:
+By default `apfeller` reads its app catalog from:
 
-- Fish
-- zsh
+`https://raw.githubusercontent.com/hasit/apfeller-apps/main/catalog/latest.tsv`
+
+If you need to point at a different catalog, set `APFELLER_CATALOG_URL` before
+running `apfeller`.

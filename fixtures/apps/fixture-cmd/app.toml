@@ -1,14 +1,14 @@
-id = "cmd"
-summary = "Turn natural language into a shell command with apfel."
-description = "Generate a single macOS shell command from a natural language request. Supports copy to clipboard and optional execution after confirmation."
-command = "cmd"
+id = "fixture-cmd"
+summary = "Fixture app that turns natural language into a shell command."
+description = "Test-only fixture that generates a single macOS shell command from a natural language request. Supports copy to clipboard and optional execution after confirmation."
+command = "fixture-cmd"
 kind = "ai-command"
 requires_commands = ["apfel", "pbcopy"]
 supported_shells = ["fish", "zsh"]
 
 [help]
-usage = 'cmd [OPTIONS] "what you want to do"'
-examples = ['cmd "find all .log files modified today"', 'cmd -x "what process is using port 3000"', 'cmd -c "list merged git branches"']
+usage = 'fixture-cmd [OPTIONS] "what you want to do"'
+examples = ['fixture-cmd "find all .log files modified today"', 'fixture-cmd -x "what process is using port 3000"', 'fixture-cmd -c "list merged git branches"']
 
 [input]
 mode = "rest"

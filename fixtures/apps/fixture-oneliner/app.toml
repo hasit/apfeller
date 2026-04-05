@@ -1,14 +1,14 @@
-id = "oneliner"
-summary = "Turn plain English into a shell one-liner with apfel."
-description = "Generate compact UNIX one-liners and pipe chains from a natural language request using apfel."
-command = "oneliner"
+id = "fixture-oneliner"
+summary = "Fixture app that turns plain English into a shell one-liner."
+description = "Test-only fixture that generates compact UNIX one-liners and pipe chains from a natural language request using apfel."
+command = "fixture-oneliner"
 kind = "ai-command"
 requires_commands = ["apfel", "pbcopy"]
 supported_shells = ["fish", "zsh"]
 
 [help]
-usage = 'oneliner [OPTIONS] "what you need"'
-examples = ['oneliner "sum the third column of a CSV"', 'oneliner -x "count unique IPs in access.log"', 'oneliner -c "extract all URLs from a file"']
+usage = 'fixture-oneliner [OPTIONS] "what you need"'
+examples = ['fixture-oneliner "sum the third column of a CSV"', 'fixture-oneliner -x "count unique IPs in access.log"', 'fixture-oneliner -c "extract all URLs from a file"']
 
 [input]
 mode = "rest"
