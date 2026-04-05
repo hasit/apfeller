@@ -1,0 +1,46 @@
+---
+title: apfeller
+permalink: /
+---
+
+# apfeller
+
+`apfeller` is an AI-powered collection of small shell apps built on
+[apfel](https://apfel.franzai.com/)
+([source repo](https://github.com/Arthur-Ficial/apfel)).
+The AI apps run fully local on your Mac with zero API cost: no API bill, no API
+keys, and no cloud round-trip.
+
+It installs a lightweight manager first, then lets users opt into focused apps.
+The AI apps are intentionally designed for small inputs, small outputs, and
+instant single-turn results so they fit apfel's fixed 4,096-token combined
+context window. `port` is included as a simple local utility.
+
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/hasit/apfeller/main/install.sh | sh
+```
+
+Then install the apps you want:
+
+```sh
+apfeller list
+apfeller install cmd oneliner
+```
+
+## AI Apps
+
+- `cmd`: natural language to a single shell command via `apfel`
+- `oneliner`: natural language to a compact UNIX pipeline via `apfel`
+- `define`: tiny multilingual dictionary lookup via `apfel`
+
+## Local Utility
+
+- `port`: show which process is using a local port
+
+## Docs
+
+- [Install](install)
+- [Authoring](authoring)
+- [Releasing](releasing)
