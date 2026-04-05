@@ -6,7 +6,12 @@ permalink: /usage/
 # Use apfeller
 
 Once `apfeller` is installed, you can browse the catalog, install the apps you
-want, and keep them updated from the command line.
+want, remove them, and keep everything updated from the command line.
+
+## Choose an App
+
+Use the [Catalog](../catalog/) page to find the app id you want to install, see
+what command it provides, and check any required tools.
 
 ## Browse Apps
 
@@ -25,7 +30,7 @@ apfeller list --installed
 See details for one app before you install it:
 
 ```sh
-apfeller info cmd
+apfeller info <app>
 ```
 
 ## Install and Remove Apps
@@ -33,13 +38,13 @@ apfeller info cmd
 Install one or more apps:
 
 ```sh
-apfeller install cmd define
+apfeller install <app>
 ```
 
 Remove apps you no longer want:
 
 ```sh
-apfeller uninstall define
+apfeller uninstall <app>
 ```
 
 ## Keep Things Updated
@@ -59,7 +64,7 @@ apfeller update --all
 Update just one app:
 
 ```sh
-apfeller update cmd
+apfeller update <app>
 ```
 
 ## Check Your Setup
@@ -74,11 +79,9 @@ This reports whether `apfeller` can see the tools and shell integration it
 needs, including `curl`, `tar`, `shasum`, and any older state files worth
 cleaning up.
 
-## Included Apps
+## Guides
 
-- `cmd`: turns a natural-language request into one shell command.
-- `oneliner`: turns a natural-language request into a compact UNIX pipeline.
-- `define`: looks up and explains a word or phrase.
-
-Use `apfeller info <app>` to see the exact summary, requirements, and command
-name for any app in the catalog.
+- [Install](../install/)
+- [Catalog](../catalog/)
+- [Use apfeller](../usage/)
+- [Write an app](../write-an-app/)

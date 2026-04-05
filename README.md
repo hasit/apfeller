@@ -1,11 +1,12 @@
 # apfeller
 
-`apfeller` is the manager + runtime repo for small shell apps built on
-[apfel](https://apfel.franzai.com/) ([source repo](https://github.com/Arthur-Ficial/apfel)).
+`apfeller` is the manager + runtime repo for small shell apps built around
+[apfel](https://apfel.franzai.com/).
 The apps run fully local on your Mac with zero API cost: no API bill, no API
 keys, and no cloud round-trip.
 
 End-user docs live at [hasit.github.io/apfeller](https://hasit.github.io/apfeller/).
+App authors can start at [hasit.github.io/apfeller/write-an-app/](https://hasit.github.io/apfeller/write-an-app/).
 
 ## Repo Split
 

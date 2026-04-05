@@ -12,9 +12,9 @@ and install only the apps you want.
 
 - `apfeller` is for macOS.
 - Fish and zsh get automatic shell integration.
-- The current AI apps depend on
-  [apfel](https://apfel.franzai.com/), so install that first if you plan to use
-  `cmd`, `oneliner`, or `define`.
+- Some apps require extra commands such as
+  [apfel](https://apfel.franzai.com/). Check the requirements for each app on
+  the [Catalog](../catalog/) page.
 
 ## Install the Manager
 
@@ -46,7 +46,7 @@ Then browse the catalog and install your first app:
 
 ```sh
 apfeller list
-apfeller install cmd
+apfeller install <app>
 ```
 
 ## Installed Locations
@@ -67,3 +67,10 @@ By default `apfeller` reads its app catalog from:
 
 If you need to point at a different catalog, set `APFELLER_CATALOG_URL` before
 running `apfeller`.
+
+## Guides
+
+- [Install](../install/)
+- [Catalog](../catalog/)
+- [Use apfeller](../usage/)
+- [Write an app](../write-an-app/)
