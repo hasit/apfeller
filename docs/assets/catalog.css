@@ -92,9 +92,7 @@
 }
 
 .catalog-row-toggle {
-  display: inline-flex;
-  align-items: center;
-  width: 100%;
+  display: inline;
   padding: 0;
   border: 0;
   background: transparent;
@@ -115,11 +113,7 @@
 }
 
 .catalog-command {
-  display: inline-block;
-  padding: 0.08rem 0.36rem;
-  border-radius: 999px;
-  background: #f1e7d7;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
 }
 
 .catalog-summary {
@@ -159,7 +153,7 @@
 }
 
 .catalog-detail-inner {
-  padding: 1rem 1.1rem 1.15rem;
+  padding: 0.75rem 0.9rem 0.85rem;
   border-top: 1px solid #efe4d2;
 }
 
@@ -178,22 +172,22 @@
 
 .catalog-detail-panel {
   display: grid;
-  gap: 0.95rem;
+  gap: 0.75rem;
 }
 
 .catalog-detail-header {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 0.85rem;
+  gap: 0.6rem 0.9rem;
   flex-wrap: wrap;
 }
 
-.catalog-detail-title-group,
+.catalog-detail-heading,
 .catalog-detail-actions {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: baseline;
+  gap: 0.45rem;
   flex-wrap: wrap;
 }
 
@@ -206,27 +200,22 @@
 
 .catalog-detail-description {
   color: #544a3a;
-  font-size: 0.85rem;
-  line-height: 1.45;
+  font-size: 0.82rem;
+  line-height: 1.38;
 }
 
-.catalog-detail-facts {
+.catalog-detail-meta {
+  margin: 0;
   display: grid;
-  gap: 0.65rem;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.28rem;
 }
 
-.catalog-detail-fact,
-.catalog-detail-section {
+.catalog-detail-meta-row {
   display: grid;
-  gap: 0.34rem;
-  padding: 0.7rem 0.8rem;
-  border-radius: 0.65rem;
-  background: #f8f1e6;
-}
-
-.catalog-detail-fact-body {
-  min-width: 0;
+  grid-template-columns: 6.25rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+  padding: 0.14rem 0;
 }
 
 .catalog-detail-label {
@@ -235,22 +224,27 @@
   font-weight: 600;
   letter-spacing: 0.01em;
   text-transform: uppercase;
+  margin: 0;
+}
+
+.catalog-detail-meta-value {
+  margin: 0;
+  min-width: 0;
 }
 
 .catalog-section-title {
   color: #54452f;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: uppercase;
+  margin: 0 0 0.18rem;
 }
 
 .catalog-detail-code {
-  display: inline-block;
-  width: fit-content;
-  max-width: 100%;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .catalog-detail-value {
@@ -259,57 +253,51 @@
   line-height: 1.4;
 }
 
-.catalog-detail-section-wide {
-  gap: 0.45rem;
-}
-
-.catalog-detail-section-grid {
+.catalog-detail-section {
   display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.32rem;
+  padding-top: 0.15rem;
 }
 
 .catalog-example-list,
 .catalog-option-list {
   margin: 0;
   padding: 0;
-  list-style: none;
 }
 
 .catalog-example-list {
   display: grid;
-  gap: 0.35rem;
-}
-
-.catalog-example-list li {
-  padding: 0.45rem 0.5rem;
-  border-radius: 0.55rem;
-  background: rgba(239, 229, 208, 0.34);
+  gap: 0.18rem;
+  padding-left: 1.1rem;
 }
 
 .catalog-example-list code {
   display: inline-block;
   max-width: 100%;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .catalog-option-list {
   display: grid;
-  gap: 0.42rem;
+  gap: 0;
+  list-style: none;
 }
 
 .catalog-option-item {
   display: grid;
-  gap: 0.12rem;
-  padding: 0.5rem 0.55rem;
-  border-radius: 0.55rem;
-  background: rgba(255, 253, 248, 0.72);
+  gap: 0.08rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid #efe4d2;
+}
+
+.catalog-option-item:first-child {
+  border-top: 0;
 }
 
 .catalog-option-signature {
   display: inline-block;
-  width: fit-content;
   font-size: 0.74rem;
 }
 
@@ -321,8 +309,8 @@
 .catalog-option-description,
 .catalog-option-meta {
   margin: 0;
-  font-size: 0.77rem;
-  line-height: 1.35;
+  font-size: 0.76rem;
+  line-height: 1.3;
 }
 
 .catalog-option-description {
@@ -359,5 +347,10 @@
   .catalog-col-downloads,
   .catalog-col-app {
     width: auto;
+  }
+
+  .catalog-detail-meta-row {
+    grid-template-columns: 1fr;
+    gap: 0.08rem;
   }
 }

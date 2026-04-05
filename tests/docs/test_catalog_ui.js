@@ -258,6 +258,11 @@ assert(cmdDetails.includes("catalog-command"), "expanded details should include 
 assert(cmdDetails.includes("apfeller install cmd"), "expanded details should include the install command");
 assert(cmdDetails.includes("cmd [OPTIONS] &quot;what you want to do&quot;"), "expanded details should include usage");
 assert(cmdDetails.includes("--execute"), "expanded details should include built-in execute for command apps");
+assert(cmdDetails.includes("catalog-detail-meta"), "expanded details should render compact metadata rows");
+assert(!cmdDetails.includes("catalog-detail-facts"), "expanded details should not use the old fact card grid");
+assert(!cmdDetails.includes("catalog-detail-fact"), "expanded details should not use the old fact card items");
+assert(!cmdDetails.includes("catalog-detail-section-grid"), "expanded details should not use the old split section grid");
+assert(!cmdDetails.includes("catalog-detail-title-group"), "expanded details should not use the old title-group wrapper");
 
 const gitsumDetails = api.renderDetailMarkup({
   id: "gitsum",
@@ -286,3 +291,5 @@ assert(namingDetails.includes("choices: mixed, camel, snake, kebab, title"), "ex
 const fallbackMarkup = api.renderFallbackDetailMarkup(row, "https://github.com/hasit/apfeller-apps/tree/main/apps/cmd");
 assert(fallbackMarkup.includes(row.description), "fallback details should preserve the catalog description");
 assert(fallbackMarkup.includes("apps/cmd"), "fallback details should point users to the app source");
+assert(fallbackMarkup.includes("catalog-detail-meta"), "fallback details should reuse compact metadata rows");
+assert(!fallbackMarkup.includes("catalog-detail-facts"), "fallback details should not render fact cards");

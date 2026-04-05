@@ -422,11 +422,11 @@
     );
   }
 
-  function renderDetailFactMarkup(label, contentMarkup) {
+  function renderDetailMetaRowMarkup(label, contentMarkup) {
     return (
-      "<div class=\"catalog-detail-fact\">" +
-      "<span class=\"catalog-detail-label\">" + escapeHtml(label) + "</span>" +
-      "<div class=\"catalog-detail-fact-body\">" + contentMarkup + "</div>" +
+      "<div class=\"catalog-detail-meta-row\">" +
+      "<dt class=\"catalog-detail-label\">" + escapeHtml(label) + "</dt>" +
+      "<dd class=\"catalog-detail-meta-value\">" + contentMarkup + "</dd>" +
       "</div>"
     );
   }
@@ -459,7 +459,7 @@
     return (
       "<div class=\"catalog-detail-panel\">" +
       "<div class=\"catalog-detail-header\">" +
-      "<div class=\"catalog-detail-title-group\">" +
+      "<div class=\"catalog-detail-heading\">" +
       "<h4 class=\"catalog-detail-title\">" + escapeHtml(row.id) + "</h4>" +
       "<code class=\"catalog-command\">" + escapeHtml(manifest.command || row.command) + "</code>" +
       "</div>" +
@@ -469,32 +469,30 @@
       "</div>" +
       "</div>" +
       "<p class=\"catalog-detail-description\">" + escapeHtml(description) + "</p>" +
-      "<div class=\"catalog-detail-facts\">" +
-      renderDetailFactMarkup("Command", "<code class=\"catalog-detail-code\">" + escapeHtml(manifest.command || row.command) + "</code>") +
-      renderDetailFactMarkup("Install", "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>") +
+      "<dl class=\"catalog-detail-meta\">" +
+      renderDetailMetaRowMarkup("Command", "<code class=\"catalog-detail-code\">" + escapeHtml(manifest.command || row.command) + "</code>") +
+      renderDetailMetaRowMarkup("Install", "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>") +
       (usage ? (
-        renderDetailFactMarkup("Usage", "<code class=\"catalog-detail-code\">" + escapeHtml(usage) + "</code>")
+        renderDetailMetaRowMarkup("Usage", "<code class=\"catalog-detail-code\">" + escapeHtml(usage) + "</code>")
       ) : "") +
-      renderDetailFactMarkup("Kind", "<span class=\"catalog-detail-value\">" + escapeHtml((manifest.kind || row.kind) + (outputMode ? " · " + outputMode : "")) + "</span>") +
-      renderDetailFactMarkup("Requires", "<span class=\"catalog-detail-value\">" + renderInlineList(requires) + "</span>") +
-      renderDetailFactMarkup("Shells", "<span class=\"catalog-detail-value\">" + renderInlineList(shells) + "</span>") +
-      "</div>" +
-      "<div class=\"catalog-detail-section catalog-detail-section-wide\">" +
-      "<span class=\"catalog-section-title\">Examples</span>" +
+      renderDetailMetaRowMarkup("Kind", "<span class=\"catalog-detail-value\">" + escapeHtml((manifest.kind || row.kind) + (outputMode ? " · " + outputMode : "")) + "</span>") +
+      renderDetailMetaRowMarkup("Requires", "<span class=\"catalog-detail-value\">" + renderInlineList(requires) + "</span>") +
+      renderDetailMetaRowMarkup("Shells", "<span class=\"catalog-detail-value\">" + renderInlineList(shells) + "</span>") +
+      "</dl>" +
+      "<section class=\"catalog-detail-section\">" +
+      "<h5 class=\"catalog-section-title\">Examples</h5>" +
       renderExamplesMarkup(examples) +
-      "</div>" +
-      "<div class=\"catalog-detail-section-grid\">" +
-      "<div class=\"catalog-detail-section\">" +
-      "<span class=\"catalog-section-title\">Built-in flags</span>" +
+      "</section>" +
+      "<section class=\"catalog-detail-section\">" +
+      "<h5 class=\"catalog-section-title\">Built-in flags</h5>" +
       renderFlagListMarkup(builtinFlags) +
-      "</div>" +
-      "<div class=\"catalog-detail-section\">" +
-      "<span class=\"catalog-section-title\">App flags</span>" +
+      "</section>" +
+      "<section class=\"catalog-detail-section\">" +
+      "<h5 class=\"catalog-section-title\">App flags</h5>" +
       (appFlags.length
         ? renderFlagListMarkup(appFlags)
         : "<p class=\"catalog-detail-empty\">No app-specific flags.</p>") +
-      "</div>" +
-      "</div>" +
+      "</section>" +
       "</div>"
     );
   }
@@ -503,7 +501,7 @@
     return (
       "<div class=\"catalog-detail-panel\">" +
       "<div class=\"catalog-detail-header\">" +
-      "<div class=\"catalog-detail-title-group\">" +
+      "<div class=\"catalog-detail-heading\">" +
       "<h4 class=\"catalog-detail-title\">" + escapeHtml(row.id) + "</h4>" +
       "<code class=\"catalog-command\">" + escapeHtml(row.command) + "</code>" +
       "</div>" +
@@ -512,12 +510,12 @@
       "</div>" +
       "</div>" +
       "<p class=\"catalog-detail-description\">" + escapeHtml(row.description) + "</p>" +
-      "<div class=\"catalog-detail-facts\">" +
-      renderDetailFactMarkup("Command", "<code class=\"catalog-detail-code\">" + escapeHtml(row.command) + "</code>") +
-      renderDetailFactMarkup("Install", "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>") +
-      renderDetailFactMarkup("Requires", "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.requires)) + "</span>") +
-      renderDetailFactMarkup("Shells", "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.supported_shells)) + "</span>") +
-      "</div>" +
+      "<dl class=\"catalog-detail-meta\">" +
+      renderDetailMetaRowMarkup("Command", "<code class=\"catalog-detail-code\">" + escapeHtml(row.command) + "</code>") +
+      renderDetailMetaRowMarkup("Install", "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>") +
+      renderDetailMetaRowMarkup("Requires", "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.requires)) + "</span>") +
+      renderDetailMetaRowMarkup("Shells", "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.supported_shells)) + "</span>") +
+      "</dl>" +
       "<p class=\"catalog-detail-empty\">Could not load the full app manifest right now.</p>" +
       "<p class=\"catalog-detail-source\">Open the source for usage, examples, and app flags: <a href=\"" + sourceUrl + "\">apps/" + escapeHtml(row.id) + "</a></p>" +
       "</div>"
