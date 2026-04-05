@@ -30,10 +30,10 @@
     }
 
     if (value === 1) {
-      return "1 GitHub download";
+      return "1 download";
     }
 
-    return value.toLocaleString("en-US") + " GitHub downloads";
+    return value.toLocaleString("en-US") + " downloads";
   }
 
   function parseCatalog(text) {

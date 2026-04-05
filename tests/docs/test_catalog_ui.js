@@ -195,6 +195,19 @@ assert(collapsedMarkup.includes("Turn natural language into a shell command."), 
 assert(!collapsedMarkup.includes(row.description), "collapsed cards should not include the long description");
 assert(!collapsedMarkup.includes("apfeller install cmd"), "collapsed cards should not include the install command");
 
+const collapsedWithDownloads = api.renderCollapsedCardMarkup({
+  id: "define",
+  command: "define",
+  summary: "Define a word or phrase.",
+  description: "Tiny multilingual dictionary lookup.",
+  requires: "apfel,pbcopy",
+  supported_shells: "fish,zsh",
+  kind: "ai-text",
+  downloads: 12
+});
+assert(collapsedWithDownloads.includes("12 downloads"), "collapsed cards should use generic download badge copy");
+assert(!collapsedWithDownloads.includes("GitHub downloads"), "collapsed cards should not mention GitHub in the download badge");
+
 const cmdDetails = api.renderDetailMarkup(row, cmd, "https://github.com/hasit/apfeller-apps/tree/main/apps/cmd");
 assert(cmdDetails.includes("apfeller install cmd"), "expanded details should include the install command");
 assert(cmdDetails.includes("cmd [OPTIONS] &quot;what you want to do&quot;"), "expanded details should include usage");
