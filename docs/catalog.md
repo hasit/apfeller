@@ -14,8 +14,6 @@ editing this site.
 Install `apfeller` first, then pick an app below and run
 `apfeller install <app>`.
 
-When GitHub reports release download counts, they appear on the matching app.
-
 ## Published Apps
 
 <p class="catalog-status" id="catalog-status">Loading current catalog...</p>
