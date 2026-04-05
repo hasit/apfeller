@@ -5,7 +5,7 @@ permalink: /
 
 # apfeller
 
-`apfeller` is an AI-powered collection of small shell apps built on
+`apfeller` is a framework + manager for small AI-powered shell apps built on
 [apfel](https://apfel.franzai.com/)
 ([source repo](https://github.com/Arthur-Ficial/apfel)).
 The AI apps run fully local on your Mac with zero API cost: no API bill, no API
