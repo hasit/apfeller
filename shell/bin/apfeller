@@ -2,7 +2,30 @@
 
 set -eu
 
-APFELLER_MANAGER_VERSION=${APFELLER_MANAGER_VERSION:-0.1.0}
+APFELLER_MANAGER_VERSION_TEMPLATE='__APFELLER_MANAGER_VERSION__'
+
+default_manager_version() {
+  script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+  if [ "$APFELLER_MANAGER_VERSION_TEMPLATE" != '__APFELLER_MANAGER''_VERSION__' ]; then
+    printf '%s' "$APFELLER_MANAGER_VERSION_TEMPLATE"
+    return 0
+  fi
+
+  if root_dir=$(CDPATH= cd -- "$script_dir/../.." 2>/dev/null && pwd); then
+    if [ -f "$root_dir/VERSION" ]; then
+      version=$(tr -d '\n' <"$root_dir/VERSION")
+      if [ -n "$version" ]; then
+        printf '%s' "$version"
+        return 0
+      fi
+    fi
+  fi
+
+  printf '%s' '0.0.0-dev'
+}
+
+APFELLER_MANAGER_VERSION=${APFELLER_MANAGER_VERSION:-$(default_manager_version)}
 MANAGER_REPO=${APFELLER_REPO:-hasit/apfeller}
 APPS_REPO=${APFELLER_APPS_REPO:-hasit/apfeller-apps}
 HOME_DIR=${HOME:?HOME is required}

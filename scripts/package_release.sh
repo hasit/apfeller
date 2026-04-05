@@ -4,7 +4,9 @@ set -eu
 
 ROOT_DIR=${APFELLER_ROOT_DIR:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}
 OUTPUT_DIR="$ROOT_DIR/dist"
+VERSION_PATH="$ROOT_DIR/VERSION"
 TMP_DIR=""
+MANAGER_VERSION=""
 
 usage() {
   cat <<'EOF'
@@ -40,6 +42,17 @@ done
 
 require_tools tar
 
+[ -f "$VERSION_PATH" ] || {
+  printf '%s\n' "Missing required file: $VERSION_PATH" >&2
+  exit 1
+}
+
+MANAGER_VERSION=$(tr -d '\n' <"$VERSION_PATH")
+[ -n "$MANAGER_VERSION" ] || {
+  printf '%s\n' "VERSION must not be empty" >&2
+  exit 1
+}
+
 MANAGER_ASSET_PATH="$OUTPUT_DIR/apfeller.tar.gz"
 TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/apfeller-package.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT INT TERM HUP
@@ -51,7 +64,7 @@ manager_stage_dir="$TMP_DIR/manager"
 rm -rf "$manager_stage_dir"
 mkdir -p "$manager_stage_dir/bin" "$manager_stage_dir/completions/fish" "$manager_stage_dir/completions/zsh"
 
-cp "$ROOT_DIR/shell/bin/apfeller" "$manager_stage_dir/bin/apfeller"
+sed "s/__APFELLER_MANAGER_VERSION__/$MANAGER_VERSION/g" "$ROOT_DIR/shell/bin/apfeller" >"$manager_stage_dir/bin/apfeller"
 cp "$ROOT_DIR/shell/completions/fish/apfeller.fish" "$manager_stage_dir/completions/fish/apfeller.fish"
 cp "$ROOT_DIR/shell/completions/zsh/_apfeller" "$manager_stage_dir/completions/zsh/_apfeller"
 

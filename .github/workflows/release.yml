@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+jobs:
+  publish:
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Select target commit
+        id: target
+        run: |
+          set -eu
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            printf 'sha=%s\n' '${{ github.event.workflow_run.head_sha }}' >>"$GITHUB_OUTPUT"
+          else
+            printf 'sha=%s\n' '${{ github.sha }}' >>"$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.target.outputs.sha }}
+      - name: Read version
+        id: version
+        run: printf 'value=%s\n' "$(tr -d '\n' < VERSION)" >>"$GITHUB_OUTPUT"
+      - name: Check release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          tag="v${{ steps.version.outputs.value }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            printf 'exists=true\n' >>"$GITHUB_OUTPUT"
+          else
+            printf 'exists=false\n' >>"$GITHUB_OUTPUT"
+          fi
+      - name: Package manager
+        if: steps.release.outputs.exists != 'true'
+        run: sh scripts/package_release.sh --output-dir dist
+      - name: Publish release
+        if: steps.release.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          version='${{ steps.version.outputs.value }}'
+          tag="v$version"
+          gh release create "$tag" \
+            dist/apfeller.tar.gz \
+            --target '${{ steps.target.outputs.sha }}' \
+            --title "$tag" \
+            --notes "apfeller $tag"

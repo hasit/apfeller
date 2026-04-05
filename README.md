@@ -80,3 +80,16 @@ framework-generated wrappers that call `apfeller __run-app`.
 
 Real published apps no longer live in this repo. Use `apfeller-apps` for app
 catalog and bundle publication work.
+
+## Releases
+
+Manager releases are published automatically by
+[release.yml](/Users/hasit/github/apfeller/.github/workflows/release.yml)
+after CI succeeds on `main`, as long as the current [VERSION](/Users/hasit/github/apfeller/VERSION)
+does not already have a matching GitHub release.
+
+To cut a new manager release:
+
+1. Update [VERSION](/Users/hasit/github/apfeller/VERSION).
+2. Merge that change to `main`.
+3. Let the workflow publish `v<VERSION>` with `dist/apfeller.tar.gz`.

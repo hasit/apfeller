@@ -32,6 +32,19 @@ PATH="$stub_dir:$PATH" sh "$ROOT_DIR/scripts/package_catalog.sh" --output-dir "$
 assert_file_exists "$dist_dir/apfeller.tar.gz"
 assert_file_exists "$dist_dir/apfeller-catalog.tsv"
 
+manager_version=$(tr -d '\n' <"$ROOT_DIR/VERSION")
+source_version_output=$(sh "$ROOT_DIR/shell/bin/apfeller" --version)
+assert_contains "$source_version_output" "apfeller $manager_version" "repo version output should match VERSION"
+
+packaged_manager="$tmp_dir/apfeller"
+tar -xOf "$dist_dir/apfeller.tar.gz" ./bin/apfeller >"$packaged_manager"
+chmod +x "$packaged_manager"
+packaged_version_output=$(sh "$packaged_manager" --version)
+assert_contains "$packaged_version_output" "apfeller $manager_version" "packaged manager version should match VERSION"
+
+packaged_manager_contents=$(cat "$packaged_manager")
+assert_not_contains "$packaged_manager_contents" '__APFELLER_MANAGER_VERSION__' "packaged manager should not keep the version placeholder"
+
 cmd_bundle=$(find "$dist_dir" -maxdepth 1 -name 'fixture-cmd-*.tar.gz' | head -n 1)
 define_bundle=$(find "$dist_dir" -maxdepth 1 -name 'fixture-define-*.tar.gz' | head -n 1)
 oneliner_bundle=$(find "$dist_dir" -maxdepth 1 -name 'fixture-oneliner-*.tar.gz' | head -n 1)
