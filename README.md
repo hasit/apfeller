@@ -13,8 +13,9 @@ context window. `port` is included as a simple local utility.
 ## What v1 includes
 
 - A POSIX `sh`-based `apfeller` manager
-- First-party shell-native app manifests under `apps/`
-- Portable POSIX shell app bundles
+- A shell app framework with author-facing `apps/<id>/app.toml` definitions
+- Compiled runtime manifests plus generated wrappers and completions at install time
+- Portable POSIX shell app bundles with optional hook scripts
 - Fish and zsh integration
 - A one-line installer for the manager
 
@@ -74,6 +75,7 @@ tests/apps/test_context_budget.sh
 tests/docs/test_public_copy.sh
 tests/install/test_install.sh
 tests/release/test_package_release.sh
+tests/release/test_app_schema.sh
 tests/e2e/test_manager.sh
 tests/e2e/test_checksum_mismatch.sh
 ```
@@ -89,6 +91,10 @@ That produces:
 - `dist/apfeller.tar.gz`
 - `dist/apfeller-catalog.tsv`
 - `dist/*.tar.gz` for app bundles
+
+Each app bundle now contains its `app.toml`, a compiled runtime manifest, args
+metadata, examples metadata, and any declared hooks. Installed commands are
+framework-generated wrappers that call `apfeller __run-app`.
 
 More detail lives in [docs/install.md](/Users/hasit/github/apfeller/docs/install.md),
 [docs/authoring.md](/Users/hasit/github/apfeller/docs/authoring.md), and

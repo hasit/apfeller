@@ -1,0 +1,27 @@
+id = "oneliner"
+version = "0.1.0"
+summary = "Turn plain English into a shell one-liner with apfel."
+description = "Generate compact UNIX one-liners and pipe chains from a natural language request using apfel."
+command = "oneliner"
+kind = "ai-command"
+requires_commands = ["apfel", "pbcopy"]
+supported_shells = ["fish", "zsh"]
+
+[help]
+usage = 'oneliner [OPTIONS] "what you need"'
+examples = ['oneliner "sum the third column of a CSV"', 'oneliner -x "count unique IPs in access.log"', 'oneliner -c "extract all URLs from a file"']
+
+[input]
+mode = "rest"
+name = "request"
+required = true
+
+[prompt]
+system = "You generate compact UNIX one-liners for macOS. Output ONLY the command. No markdown. No code fences. No comments. No prose. Keep it to one line. Prefer awk sed grep sort uniq cut tr xargs find and jq. Use pipes when useful. If the user mentions a filename path delimiter field number or pattern preserve it verbatim and do not invent replacements. Keep the command as short as possible while staying correct."
+template = "{{input}}"
+max_context_tokens = 4096
+max_input_bytes = 1024
+max_output_tokens = 128
+
+[output]
+mode = "shell_command"

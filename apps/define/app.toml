@@ -1,0 +1,44 @@
+id = "define"
+version = "0.1.0"
+summary = "Define a word or phrase with apfel."
+description = "Tiny multilingual dictionary lookup with fixed structured output. Supports input and output language selection plus clipboard copy."
+command = "define"
+kind = "ai-text"
+requires_commands = ["apfel", "pbcopy"]
+supported_shells = ["fish", "zsh"]
+
+[help]
+usage = "define [OPTIONS] WORD_OR_PHRASE"
+examples = ["define serendipity", "define hola", "define -o es resilience", "define -i ja -o en 侘び寂び"]
+
+[input]
+mode = "rest"
+name = "term"
+required = true
+
+[[args]]
+name = "in"
+type = "string"
+long = "in"
+short = "i"
+description = "Input language"
+default = "auto"
+
+[[args]]
+name = "out"
+type = "string"
+long = "out"
+short = "o"
+description = "Output language for meaning and example"
+default = "en"
+
+[prompt]
+system = "You are a tiny multilingual dictionary. Output exactly 4 labeled fields in this order: word, lang, meaning, example. No markdown. No bullets. No extra fields. Keep the full reply under 80 tokens. Detect the input language unless it is provided explicitly. If the detected input language is English write the meaning and example in the requested output language. If the detected input language is not English and the requested output language is English write the meaning in English and write the example in the original language followed by a concise English translation in parentheses on the same line. If the requested output language is not English write the meaning and example in that requested output language."
+template = "Input language: {{arg.in}}. Output language: {{arg.out}}. Term: {{input}}"
+max_context_tokens = 4096
+max_input_bytes = 768
+max_output_tokens = 120
+
+[output]
+mode = "structured_text"
+fields = ["word", "lang", "meaning", "example"]

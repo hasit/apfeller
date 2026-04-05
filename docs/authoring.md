@@ -1,50 +1,141 @@
 # Authoring Apps
 
-Each app lives under `apps/<id>/` and includes:
+Each app lives under `apps/<id>/` and is declared once in `app.toml`.
+Optional executable hooks live under `apps/<id>/hooks/`.
 
-- `app.env`
-- `bin/<command>`
-- `completions/fish/<command>.fish`
-- `completions/zsh/_<command>`
+`apfeller` does not ship handwritten per-app entrypoint scripts or handwritten
+per-app completions anymore. Release packaging compiles each `app.toml` into a
+shell-friendly runtime manifest, and install time generates the wrapper script
+and fish/zsh completions.
 
-Required `app.env` variables:
+## Layout
 
-- `APFELLER_ID`
-- `APFELLER_VERSION`
-- `APFELLER_SUMMARY`
-- `APFELLER_DESCRIPTION`
-- `APFELLER_ENTRYPOINT`
-- `APFELLER_REQUIRES`
-- `APFELLER_SUPPORTED_SHELLS`
-- `APFELLER_BUNDLE_FILES`
-- `APFELLER_ARCHIVE`
+- `apps/<id>/app.toml`
+- `apps/<id>/hooks/*.sh` when the app needs hooks
 
-Manifest rules for v1:
+## Required Top-Level Fields
 
-- Use single-line values only. Tabs and newlines are rejected during packaging.
-- List-like values use comma-separated strings.
-- Entrypoints must be POSIX `sh` scripts.
-- Apps should be self-contained when bundled.
-- If an app uses apfel, source [runtime/lib/apfel.sh](/Users/hasit/github/apfeller/runtime/lib/apfel.sh).
-- Command names are public and unprefixed, so choose carefully.
+- `id`
+- `version`
+- `summary`
+- `description`
+- `command`
+- `kind`
+- `requires_commands`
+- `supported_shells`
 
-AI-backed app scripts must also declare:
+Supported `kind` values:
 
-- `MAX_CONTEXT_TOKENS=4096`
-- `MAX_INPUT_BYTES`
-- `MAX_OUTPUT_TOKENS`
+- `ai-command`
+- `ai-text`
+- `local-command`
 
-CI checks `system_prompt + MAX_INPUT_BYTES + MAX_OUTPUT_TOKENS + 256 <= 4096`
-for every AI app to keep requests inside apfel's fixed combined window.
+## Required Sections
 
-To package release bundles locally:
+`[help]`
+
+- `usage`
+- `examples`
+
+`[input]`
+
+- `mode = "none" | "single" | "rest"`
+- `name`
+- `required = true | false`
+
+`[output]`
+
+- `mode = "shell_command" | "text" | "structured_text" | "local_passthrough"`
+- `fields = [...]` is required only for `structured_text`
+
+`[prompt]` for AI apps
+
+- `system`
+- `template`
+- `max_context_tokens`
+- `max_input_bytes`
+- `max_output_tokens`
+
+`[hooks]` for hook-backed apps
+
+- `build_prompt` optional
+- `pre_run` optional
+- `local_run` required for `local-command`
+
+`[[args]]` blocks are optional and support:
+
+- `name`
+- `type = "flag" | "string" | "integer" | "enum"`
+- `long`
+- `short` optional
+- `description`
+- `default` optional
+- `choices` optional and required for `enum`
+
+## Valid Kind / Output Pairs
+
+- `ai-command` + `shell_command`
+- `ai-text` + `text`
+- `ai-text` + `structured_text`
+- `local-command` + `local_passthrough`
+
+## Prompt Templates
+
+Prompt templates use simple placeholder substitution only:
+
+- `{{input}}`
+- `{{arg.<name>}}`
+
+There are no loops, nested expressions, or conditionals in v1.
+
+## Hook Contract
+
+Hooks are executed, not sourced. `apfeller` passes:
+
+- `APFELLER_APP_DIR`
+- `APFELLER_INPUT`
+- `APFELLER_ARG_<UPPER_SNAKE_NAME>` for each declared arg
+
+Hook behavior:
+
+- `build_prompt` writes the final user prompt to stdout
+- `pre_run` validates or prepares and exits non-zero on failure
+- `local_run` performs the local command execution and owns stdout/stderr
+
+## 4096-Token Guard
+
+AI apps declare their apfel window in `[prompt]`. CI checks the compiled
+runtime config with:
+
+```text
+system_prompt_bytes + max_input_bytes + max_output_tokens + 256 <= 4096
+```
+
+Runtime also rejects oversized requests before calling apfel.
+
+## Current Seed Apps
+
+- `cmd`: `ai-command`
+- `oneliner`: `ai-command`
+- `define`: `ai-text`
+- `port`: `local-command`
+
+## Release Packaging
 
 ```sh
 scripts/package_release.sh --output-dir dist
 ```
 
-That will:
+That produces:
 
-- Build each app tarball under `dist/`
-- Generate `dist/apfeller-catalog.tsv`
-- Build the portable manager asset at `dist/apfeller.tar.gz`
+- `dist/apfeller.tar.gz`
+- `dist/apfeller-catalog.tsv`
+- `dist/<app>-<version>.tar.gz`
+
+Each app archive contains:
+
+- `app.toml`
+- `runtime/manifest.env`
+- `runtime/args.tsv`
+- `runtime/examples.txt`
+- declared hook files, when present

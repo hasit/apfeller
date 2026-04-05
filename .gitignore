@@ -1,5 +1,8 @@
 # Local build and release output
 /dist/
+/_site/
+/.jekyll-cache/
+/.jekyll-metadata
 
 # Local environment files
 .env

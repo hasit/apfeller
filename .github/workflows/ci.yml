@@ -23,7 +23,9 @@ jobs:
       - name: Install script tests
         run: tests/install/test_install.sh
       - name: Release packaging test
-        run: tests/release/test_package_release.sh
+        run: |
+          tests/release/test_package_release.sh
+          tests/release/test_app_schema.sh
       - name: End-to-end manager test
         run: tests/e2e/test_manager.sh
       - name: Checksum mismatch test

@@ -35,6 +35,10 @@ App payload paths:
 - `~/.local/share/apfeller/store/<app>/<version>/`
 - `~/.local/share/apfeller/state.tsv`
 
+Installed app bundles contain compiled framework metadata. `apfeller` generates
+the command wrapper and fish/zsh completions during install, so app archives do
+not need to ship handwritten entrypoint scripts.
+
 Supported shells in v1:
 
 - Fish

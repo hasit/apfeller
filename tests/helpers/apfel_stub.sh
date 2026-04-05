@@ -11,4 +11,11 @@ if [ "${APFELLER_STUB_FAIL_IF_CALLED:-0}" = "1" ]; then
   exit 97
 fi
 
+if [ -n "${APFELLER_STUB_ARGS_FILE:-}" ]; then
+  : >"$APFELLER_STUB_ARGS_FILE"
+  for arg in "$@"; do
+    printf '%s\n' "$arg" >>"$APFELLER_STUB_ARGS_FILE"
+  done
+fi
+
 printf '%s\n' "${APFELLER_STUB_OUTPUT:-echo hello}"

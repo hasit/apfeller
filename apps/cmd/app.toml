@@ -1,0 +1,27 @@
+id = "cmd"
+version = "0.1.0"
+summary = "Turn natural language into a shell command with apfel."
+description = "Generate a single macOS shell command from a natural language request. Supports copy to clipboard and optional execution after confirmation."
+command = "cmd"
+kind = "ai-command"
+requires_commands = ["apfel", "pbcopy"]
+supported_shells = ["fish", "zsh"]
+
+[help]
+usage = 'cmd [OPTIONS] "what you want to do"'
+examples = ['cmd "find all .log files modified today"', 'cmd -x "what process is using port 3000"', 'cmd -c "list merged git branches"']
+
+[input]
+mode = "rest"
+name = "request"
+required = true
+
+[prompt]
+system = "You convert natural language into a single macOS shell command. Output ONLY the command. No markdown. No code fences. No comments. No prose. One line only. Use standard terminal tools. Prefer safe read-only commands unless the user explicitly asks to modify delete or execute something. If the user mentions a filename path port branch or pattern preserve it verbatim instead of inventing alternatives. If multiple answers are possible pick the most direct command."
+template = "{{input}}"
+max_context_tokens = 4096
+max_input_bytes = 1024
+max_output_tokens = 96
+
+[output]
+mode = "shell_command"

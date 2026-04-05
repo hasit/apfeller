@@ -17,7 +17,7 @@ mkdir -p "$stub_dir"
 cp "$ROOT_DIR/tests/helpers/apfel_stub.sh" "$stub_dir/apfel"
 chmod +x "$stub_dir/apfel"
 
-(cd "$ROOT_DIR" && scripts/package_release.sh --output-dir "$dist_dir")
+(cd "$ROOT_DIR" && sh scripts/package_release.sh --output-dir "$dist_dir")
 printf '%s\n' "tampered" >>"$dist_dir/cmd-0.1.0.tar.gz"
 
 mkdir -p "$manager_stage" "$home_dir/.local/bin"

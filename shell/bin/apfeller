@@ -61,6 +61,14 @@ require_tools() {
   done
 }
 
+shell_quote() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+
+escape_double_quotes() {
+  printf '%s' "$1" | sed 's/[\\"]/\\&/g'
+}
+
 status_for_path() {
   if [ -e "$1" ] || [ -L "$1" ]; then
     printf '%s\n' "present"
@@ -83,10 +91,48 @@ detect_shell_kind() {
   esac
 }
 
+split_csv() {
+  csv=$1
+  [ -n "$csv" ] || return 0
+
+  old_ifs=$IFS
+  IFS=,
+  # shellcheck disable=SC2086
+  set -- $csv
+  IFS=$old_ifs
+
+  for item in "$@"; do
+    [ -n "$item" ] || continue
+    printf '%s\n' "$item"
+  done
+}
+
+trim() {
+  printf '%s' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+contains_csv() {
+  csv=$1
+  item=$2
+
+  case ",$csv," in
+    *,"$item",*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+sanitize_name() {
+  printf '%s' "$1" | tr '[:lower:]-' '[:upper:]_' | tr -cd 'A-Z0-9_'
+}
+
 ensure_state_file() {
   ensure_dir "$(dirname "$STATE_PATH")"
   if [ ! -f "$STATE_PATH" ]; then
-    printf 'id\tversion\tentrypoint\tinstalled_at\n' >"$STATE_PATH"
+    printf 'id\tversion\tcommand\tinstalled_at\n' >"$STATE_PATH"
   fi
 }
 
@@ -136,12 +182,12 @@ state_remove() {
 state_upsert() {
   app_id=$1
   version=$2
-  entrypoint=$3
+  command_name=$3
   installed_at=$4
 
   ensure_state_file
   state_remove "$app_id"
-  printf '%s\t%s\t%s\t%s\n' "$app_id" "$version" "$entrypoint" "$installed_at" >>"$STATE_PATH"
+  printf '%s\t%s\t%s\t%s\n' "$app_id" "$version" "$command_name" "$installed_at" >>"$STATE_PATH"
 }
 
 fetch_catalog() {
@@ -160,7 +206,7 @@ load_catalog_entry() {
   entry_data=$(
     awk -F '\t' -v app="$app_id" -v sep="$US" '
       NR > 1 && $1 == app {
-        printf "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", $1, sep, $2, sep, $3, sep, $4, sep, $5, sep, $6, sep, $7, sep, $8, sep, $9
+        printf "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", $1, sep, $2, sep, $3, sep, $4, sep, $5, sep, $6, sep, $7, sep, $8, sep, $9, sep, $10
         found = 1
         exit
       }
@@ -186,7 +232,9 @@ load_catalog_entry() {
   shift
   CAT_DESCRIPTION=$1
   shift
-  CAT_ENTRYPOINT=$1
+  CAT_COMMAND=$1
+  shift
+  CAT_KIND=$1
   shift
   CAT_REQUIRES=$1
   shift
@@ -339,24 +387,6 @@ install_manager_from_archive() {
   fi
 }
 
-split_csv() {
-  csv=$1
-  if [ -z "$csv" ]; then
-    return 0
-  fi
-
-  old_ifs=$IFS
-  IFS=,
-  # shellcheck disable=SC2086
-  set -- $csv
-  IFS=$old_ifs
-
-  for item in "$@"; do
-    [ -n "$item" ] || continue
-    printf '%s\n' "$item"
-  done
-}
-
 check_required_commands() {
   app_id=$1
   requires=$2
@@ -400,9 +430,192 @@ ensure_command_slot_available() {
   fi
 }
 
+load_runtime_manifest() {
+  app_dir=$1
+  APP_RUNTIME_MANIFEST="$app_dir/runtime/manifest.env"
+  APP_ARGS_PATH="$app_dir/runtime/args.tsv"
+  APP_EXAMPLES_PATH="$app_dir/runtime/examples.txt"
+
+  [ -f "$APP_RUNTIME_MANIFEST" ] || fail "App bundle is missing runtime/manifest.env"
+  [ -f "$APP_ARGS_PATH" ] || fail "App bundle is missing runtime/args.tsv"
+  [ -f "$APP_EXAMPLES_PATH" ] || fail "App bundle is missing runtime/examples.txt"
+
+  APFELLER_APP_ID=
+  APFELLER_APP_VERSION=
+  APFELLER_APP_SUMMARY=
+  APFELLER_APP_DESCRIPTION=
+  APFELLER_APP_COMMAND=
+  APFELLER_APP_KIND=
+  APFELLER_APP_REQUIRES=
+  APFELLER_APP_SUPPORTED_SHELLS=
+  APFELLER_HELP_USAGE=
+  APFELLER_INPUT_MODE=
+  APFELLER_INPUT_NAME=
+  APFELLER_INPUT_REQUIRED=
+  APFELLER_PROMPT_SYSTEM=
+  APFELLER_PROMPT_TEMPLATE=
+  APFELLER_PROMPT_MAX_CONTEXT_TOKENS=
+  APFELLER_PROMPT_MAX_INPUT_BYTES=
+  APFELLER_PROMPT_MAX_OUTPUT_TOKENS=
+  APFELLER_OUTPUT_MODE=
+  APFELLER_OUTPUT_FIELDS=
+  APFELLER_HOOK_BUILD_PROMPT=
+  APFELLER_HOOK_PRE_RUN=
+  APFELLER_HOOK_LOCAL_RUN=
+
+  # shellcheck disable=SC1090
+  . "$APP_RUNTIME_MANIFEST"
+}
+
+generate_app_wrapper() {
+  store_path=$1
+  command_name=$2
+
+  wrapper_dir="$store_path/bin"
+  wrapper_path="$wrapper_dir/$command_name"
+  ensure_dir "$wrapper_dir"
+
+  cat >"$wrapper_path" <<'EOF'
+#!/bin/sh
+
+set -eu
+
+script_path=$0
+while [ -L "$script_path" ]; do
+  target=$(readlink "$script_path")
+  case "$target" in
+    /*)
+      script_path=$target
+      ;;
+    *)
+      script_path=$(dirname "$script_path")/$target
+      ;;
+  esac
+done
+
+APP_DIR=$(CDPATH= cd -- "$(dirname -- "$script_path")/.." && pwd)
+APFELLER_MANAGER_BIN=${APFELLER_MANAGER_BIN:-apfeller}
+
+exec "$APFELLER_MANAGER_BIN" __run-app "$APP_DIR" "$@"
+EOF
+
+  chmod +x "$wrapper_path"
+}
+
+write_fish_completion() {
+  store_path=$1
+  command_name=$2
+
+  load_runtime_manifest "$store_path"
+  completion_path="$store_path/completions/fish/$command_name.fish"
+  ensure_dir "$(dirname "$completion_path")"
+
+  {
+    printf 'complete -c %s -f -s h -l help -d "%s"\n' "$command_name" "Show this help"
+
+    case "$APFELLER_OUTPUT_MODE" in
+      shell_command)
+        printf 'complete -c %s -f -s c -l copy -d "%s"\n' "$command_name" "Copy the generated command to the clipboard"
+        printf 'complete -c %s -f -s x -l execute -d "%s"\n' "$command_name" "Run the generated command after confirmation"
+        ;;
+      text|structured_text)
+        printf 'complete -c %s -f -s c -l copy -d "%s"\n' "$command_name" "Copy the response to the clipboard"
+        ;;
+    esac
+
+    while IFS="$TAB" read -r arg_name arg_type arg_long arg_short arg_description arg_default arg_choices; do
+      [ "$arg_name" = "name" ] && continue
+      [ -n "$arg_name" ] || continue
+
+      command_line=$(printf 'complete -c %s -f' "$command_name")
+      if [ -n "$arg_short" ]; then
+        command_line="$command_line -s $arg_short"
+      fi
+      command_line="$command_line -l $arg_long"
+
+      case "$arg_type" in
+        string|integer|enum)
+          command_line="$command_line -r"
+          ;;
+      esac
+
+      if [ "$arg_type" = "enum" ] && [ -n "$arg_choices" ]; then
+        fish_choices=$(printf '%s' "$arg_choices" | tr ',' ' ')
+        command_line="$command_line -a \"$(escape_double_quotes "$fish_choices")\""
+      fi
+
+      command_line="$command_line -d \"$(escape_double_quotes "$arg_description")\""
+      printf '%s\n' "$command_line"
+    done <"$APP_ARGS_PATH"
+  } >"$completion_path"
+}
+
+write_zsh_completion() {
+  store_path=$1
+  command_name=$2
+
+  load_runtime_manifest "$store_path"
+  completion_path="$store_path/completions/zsh/_$command_name"
+  ensure_dir "$(dirname "$completion_path")"
+
+  {
+    printf '#compdef %s\n\n' "$command_name"
+    printf '_arguments \\\n'
+    printf "  '-h[Show this help]' \\\n"
+    printf "  '--help[Show this help]' \\\n"
+
+    case "$APFELLER_OUTPUT_MODE" in
+      shell_command)
+        printf "  '-c[Copy the generated command to the clipboard]' \\\n"
+        printf "  '--copy[Copy the generated command to the clipboard]' \\\n"
+        printf "  '-x[Run the generated command after confirmation]' \\\n"
+        printf "  '--execute[Run the generated command after confirmation]' \\\n"
+        ;;
+      text|structured_text)
+        printf "  '-c[Copy the response to the clipboard]' \\\n"
+        printf "  '--copy[Copy the response to the clipboard]' \\\n"
+        ;;
+    esac
+
+    while IFS="$TAB" read -r arg_name arg_type arg_long arg_short arg_description arg_default arg_choices; do
+      [ "$arg_name" = "name" ] && continue
+      [ -n "$arg_name" ] || continue
+
+      description=$(escape_double_quotes "$arg_description")
+      suffix=''
+      case "$arg_type" in
+        string)
+          suffix=":value:"
+          ;;
+        integer)
+          suffix=":integer:"
+          ;;
+        enum)
+          if [ -n "$arg_choices" ]; then
+            choices=$(printf '%s' "$arg_choices" | tr ',' ' ')
+            suffix=":value:($(escape_double_quotes "$choices"))"
+          else
+            suffix=":value:"
+          fi
+          ;;
+      esac
+
+      if [ -n "$arg_short" ]; then
+        printf "  '-%s[%s]%s' \\\n" "$arg_short" "$description" "$suffix"
+      fi
+      printf "  '--%s[%s]%s' \\\n" "$arg_long" "$description" "$suffix"
+    done <"$APP_ARGS_PATH"
+
+    printf "  '*:input:_files'\n"
+  } >"$completion_path"
+}
+
 install_app_completions() {
   store_path=$1
   command_name=$2
+
+  write_fish_completion "$store_path" "$command_name"
+  write_zsh_completion "$store_path" "$command_name"
 
   if [ -f "$store_path/completions/fish/$command_name.fish" ]; then
     ensure_dir "$FISH_COMPLETION_DIR"
@@ -425,7 +638,7 @@ install_app() {
   require_tools curl tar shasum
   check_required_commands "$CAT_ID" "$CAT_REQUIRES"
 
-  command_name=$(basename "$CAT_ENTRYPOINT")
+  command_name=$CAT_COMMAND
   command_path="$LOCAL_BIN_DIR/$command_name"
   archive_url="$RELEASE_BASE_URL/$CAT_BUNDLE_ARCHIVE"
   archive_path="$TMP_DIR/$CAT_BUNDLE_ARCHIVE"
@@ -449,18 +662,21 @@ install_app() {
   mkdir -p "$extract_dir"
   tar -xzf "$archive_path" -C "$extract_dir"
 
-  entrypoint_path="$extract_dir/$CAT_ENTRYPOINT"
-  [ -f "$entrypoint_path" ] || fail "Bundle for $CAT_ID is missing $CAT_ENTRYPOINT"
+  load_runtime_manifest "$extract_dir"
+  [ "$APFELLER_APP_COMMAND" = "$CAT_COMMAND" ] || fail "Bundle command mismatch for $CAT_ID"
+  [ "$APFELLER_APP_KIND" = "$CAT_KIND" ] || fail "Bundle kind mismatch for $CAT_ID"
 
   rm -rf "$store_path"
   mv "$extract_dir" "$store_path"
 
+  generate_app_wrapper "$store_path" "$command_name"
+
   rm -f "$command_path"
-  ln -s "$store_path/$CAT_ENTRYPOINT" "$command_path"
+  ln -s "$store_path/bin/$command_name" "$command_path"
   install_app_completions "$store_path" "$command_name"
 
   installed_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-  state_upsert "$CAT_ID" "$CAT_VERSION" "$CAT_ENTRYPOINT" "$installed_at"
+  state_upsert "$CAT_ID" "$CAT_VERSION" "$CAT_COMMAND" "$installed_at"
 
   if [ -n "$previous_version" ] && [ "$previous_version" != "$CAT_VERSION" ]; then
     rm -rf "$STORE_DIR/$CAT_ID/$previous_version"
@@ -473,14 +689,13 @@ uninstall_app() {
   app_id=$1
 
   version=$(state_get_field "$app_id" 2)
-  entrypoint=$(state_get_field "$app_id" 3)
+  command_name=$(state_get_field "$app_id" 3)
 
-  if [ -z "$version" ] || [ -z "$entrypoint" ]; then
+  if [ -z "$version" ] || [ -z "$command_name" ]; then
     printf '%s is not installed.\n' "$app_id"
     return 0
   fi
 
-  command_name=$(basename "$entrypoint")
   command_path="$LOCAL_BIN_DIR/$command_name"
   fish_completion_path="$FISH_COMPLETION_DIR/$command_name.fish"
   zsh_completion_path="$ZSH_COMPLETION_DIR/_$command_name"
@@ -496,6 +711,607 @@ uninstall_app() {
   state_remove "$app_id"
 
   printf 'Removed %s\n' "$app_id"
+}
+
+apfeller_require_apfel() {
+  if command -v "${APFELLER_APFEL_BIN:-apfel}" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  printf '%s\n' "Error: apfel not found. Install with: brew install Arthur-Ficial/tap/apfel" >&2
+  return 127
+}
+
+apfeller_count_bytes() {
+  LC_ALL=C printf '%s' "$1" | wc -c | awk '{print $1}'
+}
+
+apfeller_require_context_budget() {
+  app_name=$1
+  max_context_tokens=$2
+  max_input_bytes=$3
+  max_output_tokens=$4
+  user_prompt=$5
+
+  prompt_bytes=$(apfeller_count_bytes "$user_prompt")
+  effective_limit=$((max_context_tokens - max_output_tokens - 256))
+  if [ "$max_input_bytes" -lt "$effective_limit" ]; then
+    effective_limit=$max_input_bytes
+  fi
+
+  if [ "$prompt_bytes" -gt "$effective_limit" ]; then
+    printf '%s\n' "Input too large for $app_name; keep it under $effective_limit bytes so it fits apfel's ${max_context_tokens}-token window." >&2
+    return 1
+  fi
+}
+
+apfeller_query() {
+  max_tokens=$1
+  system_prompt=$2
+  user_prompt=$3
+
+  apfeller_require_apfel || return $?
+
+  "${APFELLER_APFEL_BIN:-apfel}" \
+    -q \
+    --no-color \
+    --temperature 0 \
+    --seed 1 \
+    --max-tokens "$max_tokens" \
+    -s "$system_prompt" \
+    "$user_prompt"
+}
+
+apfeller_clean_command() {
+  cleaned=$(
+    printf '%s\n' "$1" | awk '
+      {
+        gsub(/^[[:space:]]+/, "", $0)
+        gsub(/[[:space:]]+$/, "", $0)
+        if ($0 == "" || $0 ~ /^```/ || $0 ~ /^#/) {
+          next
+        }
+        sub(/^\$[[:space:]]*/, "", $0)
+        print
+        exit
+      }
+    '
+  )
+
+  [ -n "$cleaned" ] || return 1
+  printf '%s\n' "$cleaned"
+}
+
+apfeller_copy() {
+  if ! command -v pbcopy >/dev/null 2>&1; then
+    printf '%s\n' "Error: pbcopy not found." >&2
+    return 127
+  fi
+
+  printf '%s' "$1" | pbcopy
+}
+
+apfeller_confirm() {
+  prompt=$1
+  printf '%s' "$prompt"
+  IFS= read -r response || return 1
+
+  case "$response" in
+    y|Y)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+template_replace_literal() {
+  template=$1
+  token=$2
+  value=$3
+
+  awk -v template="$template" -v token="$token" -v value="$value" '
+    function replace_all(text, token, value,    out, pos, token_len) {
+      out = ""
+      token_len = length(token)
+      while ((pos = index(text, token)) > 0) {
+        out = out substr(text, 1, pos - 1) value
+        text = substr(text, pos + token_len)
+      }
+      return out text
+    }
+    BEGIN {
+      print replace_all(template, token, value)
+    }
+  '
+}
+
+arg_record_by_long() {
+  option_name=$1
+  awk -F '\t' -v option="$option_name" -v sep="$US" '
+    NR > 1 && $3 == option {
+      printf "%s%s%s%s%s%s%s%s%s%s%s%s%s", $1, sep, $2, sep, $3, sep, $4, sep, $5, sep, $6, sep, $7
+      found = 1
+      exit
+    }
+    END {
+      exit found ? 0 : 1
+    }
+  ' "$APP_ARGS_PATH"
+}
+
+arg_record_by_short() {
+  option_name=$1
+  awk -F '\t' -v option="$option_name" -v sep="$US" '
+    NR > 1 && $4 == option {
+      printf "%s%s%s%s%s%s%s%s%s%s%s%s%s", $1, sep, $2, sep, $3, sep, $4, sep, $5, sep, $6, sep, $7
+      found = 1
+      exit
+    }
+    END {
+      exit found ? 0 : 1
+    }
+  ' "$APP_ARGS_PATH"
+}
+
+parse_arg_record() {
+  record=$1
+  old_ifs=$IFS
+  IFS=$US
+  # shellcheck disable=SC2086
+  set -- $record
+  IFS=$old_ifs
+
+  ARG_REC_NAME=${1-}
+  shift
+  ARG_REC_TYPE=${1-}
+  shift
+  ARG_REC_LONG=${1-}
+  shift
+  ARG_REC_SHORT=${1-}
+  shift
+  ARG_REC_DESCRIPTION=${1-}
+  shift
+  ARG_REC_DEFAULT=${1-}
+  shift
+  ARG_REC_CHOICES=${1-}
+}
+
+runtime_set_arg_value() {
+  arg_name=$1
+  arg_value=$2
+  var_name=RUN_ARG_$(sanitize_name "$arg_name")
+  eval "$var_name=$(shell_quote "$arg_value")"
+}
+
+runtime_get_arg_value() {
+  arg_name=$1
+  var_name=RUN_ARG_$(sanitize_name "$arg_name")
+  eval "printf '%s\n' \"\${$var_name:-}\""
+}
+
+runtime_initialize_arg_defaults() {
+  while IFS="$TAB" read -r arg_name arg_type arg_long arg_short arg_description arg_default arg_choices; do
+    [ "$arg_name" = "name" ] && continue
+    [ -n "$arg_name" ] || continue
+    runtime_set_arg_value "$arg_name" "$arg_default"
+  done <"$APP_ARGS_PATH"
+}
+
+runtime_validate_option_value() {
+  arg_name=$1
+  arg_type=$2
+  arg_value=$3
+  arg_choices=$4
+
+  case "$arg_type" in
+    string)
+      return 0
+      ;;
+    integer)
+      case "$arg_value" in
+        ''|*[!0-9]*)
+          fail "Option --$arg_name expects an integer"
+          ;;
+      esac
+      ;;
+    enum)
+      contains_csv "$arg_choices" "$arg_value" || fail "Option --$arg_name must be one of: $arg_choices"
+      ;;
+  esac
+}
+
+runtime_supports_copy() {
+  case "$APFELLER_OUTPUT_MODE" in
+    shell_command|text|structured_text)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+runtime_append_positional() {
+  value=$1
+  RUN_POSITIONAL_COUNT=$((RUN_POSITIONAL_COUNT + 1))
+
+  if [ -z "$RUN_POSITIONAL_FIRST" ]; then
+    RUN_POSITIONAL_FIRST=$value
+  fi
+
+  if [ -z "$RUN_POSITIONAL_JOINED" ]; then
+    RUN_POSITIONAL_JOINED=$value
+  else
+    RUN_POSITIONAL_JOINED="$RUN_POSITIONAL_JOINED $value"
+  fi
+}
+
+runtime_finalize_input() {
+  case "$APFELLER_INPUT_MODE" in
+    none)
+      [ "$RUN_POSITIONAL_COUNT" -eq 0 ] || fail "Usage: $APFELLER_HELP_USAGE"
+      APPRUN_INPUT=
+      ;;
+    single)
+      if [ "$APFELLER_INPUT_REQUIRED" = "1" ]; then
+        [ "$RUN_POSITIONAL_COUNT" -eq 1 ] || fail "Usage: $APFELLER_HELP_USAGE"
+      else
+        [ "$RUN_POSITIONAL_COUNT" -le 1 ] || fail "Usage: $APFELLER_HELP_USAGE"
+      fi
+      APPRUN_INPUT=$RUN_POSITIONAL_FIRST
+      ;;
+    rest)
+      if [ "$APFELLER_INPUT_REQUIRED" = "1" ]; then
+        [ "$RUN_POSITIONAL_COUNT" -gt 0 ] || fail "Usage: $APFELLER_HELP_USAGE"
+      fi
+      APPRUN_INPUT=$RUN_POSITIONAL_JOINED
+      ;;
+    *)
+      fail "Unsupported input mode: $APFELLER_INPUT_MODE"
+      ;;
+  esac
+}
+
+runtime_parse_args() {
+  RUN_SHOW_HELP=0
+  RUN_SHOULD_COPY=0
+  RUN_SHOULD_EXECUTE=0
+  RUN_POSITIONAL_COUNT=0
+  RUN_POSITIONAL_FIRST=
+  RUN_POSITIONAL_JOINED=
+  APPRUN_INPUT=
+
+  runtime_initialize_arg_defaults
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        RUN_SHOW_HELP=1
+        shift
+        ;;
+      -c|--copy)
+        runtime_supports_copy || fail "Unknown option: $1"
+        RUN_SHOULD_COPY=1
+        shift
+        ;;
+      -x|--execute)
+        [ "$APFELLER_OUTPUT_MODE" = "shell_command" ] || fail "Unknown option: $1"
+        RUN_SHOULD_EXECUTE=1
+        shift
+        ;;
+      --)
+        shift
+        while [ $# -gt 0 ]; do
+          runtime_append_positional "$1"
+          shift
+        done
+        ;;
+      --*=*)
+        option_name=${1%%=*}
+        option_name=${option_name#--}
+        option_value=${1#*=}
+        record=$(arg_record_by_long "$option_name") || fail "Unknown option: --$option_name"
+        parse_arg_record "$record"
+        [ "$ARG_REC_TYPE" != "flag" ] || fail "Option --$option_name does not take a value"
+        runtime_validate_option_value "$ARG_REC_LONG" "$ARG_REC_TYPE" "$option_value" "$ARG_REC_CHOICES"
+        runtime_set_arg_value "$ARG_REC_NAME" "$option_value"
+        shift
+        ;;
+      --*)
+        option_name=${1#--}
+        record=$(arg_record_by_long "$option_name") || fail "Unknown option: --$option_name"
+        parse_arg_record "$record"
+        if [ "$ARG_REC_TYPE" = "flag" ]; then
+          runtime_set_arg_value "$ARG_REC_NAME" "1"
+          shift
+        else
+          [ $# -ge 2 ] || fail "Option --$option_name requires a value"
+          option_value=$2
+          runtime_validate_option_value "$ARG_REC_LONG" "$ARG_REC_TYPE" "$option_value" "$ARG_REC_CHOICES"
+          runtime_set_arg_value "$ARG_REC_NAME" "$option_value"
+          shift 2
+        fi
+        ;;
+      -?*)
+        short_option=${1#-}
+        [ "${#short_option}" -eq 1 ] || fail "Unknown option: $1"
+        record=$(arg_record_by_short "$short_option") || fail "Unknown option: -$short_option"
+        parse_arg_record "$record"
+        if [ "$ARG_REC_TYPE" = "flag" ]; then
+          runtime_set_arg_value "$ARG_REC_NAME" "1"
+          shift
+        else
+          [ $# -ge 2 ] || fail "Option -$short_option requires a value"
+          option_value=$2
+          runtime_validate_option_value "$ARG_REC_LONG" "$ARG_REC_TYPE" "$option_value" "$ARG_REC_CHOICES"
+          runtime_set_arg_value "$ARG_REC_NAME" "$option_value"
+          shift 2
+        fi
+        ;;
+      *)
+        runtime_append_positional "$1"
+        shift
+        ;;
+    esac
+  done
+
+  if [ "$RUN_SHOW_HELP" = "1" ]; then
+    APPRUN_INPUT=
+    return 0
+  fi
+
+  runtime_finalize_input
+}
+
+runtime_print_help() {
+  printf '%s - %s\n\n' "$APFELLER_APP_COMMAND" "$APFELLER_APP_SUMMARY"
+  printf 'Usage: %s\n\n' "$APFELLER_HELP_USAGE"
+  printf '%s\n\n' "$APFELLER_APP_DESCRIPTION"
+  printf 'Options:\n'
+  printf '  -h, --help     Show this help\n'
+
+  case "$APFELLER_OUTPUT_MODE" in
+    shell_command)
+      printf '  -c, --copy     Copy the generated command to the clipboard\n'
+      printf '  -x, --execute  Run the generated command after confirmation\n'
+      ;;
+    text|structured_text)
+      printf '  -c, --copy     Copy the response to the clipboard\n'
+      ;;
+  esac
+
+  while IFS="$TAB" read -r arg_name arg_type arg_long arg_short arg_description arg_default arg_choices; do
+    [ "$arg_name" = "name" ] && continue
+    [ -n "$arg_name" ] || continue
+
+    line='  '
+    if [ -n "$arg_short" ]; then
+      line="$line-$arg_short, "
+    else
+      line="$line    "
+    fi
+    line="$line--$arg_long"
+
+    case "$arg_type" in
+      string)
+        line="$line VALUE"
+        ;;
+      integer)
+        line="$line INTEGER"
+        ;;
+      enum)
+        line="$line VALUE"
+        ;;
+    esac
+
+    while [ "${#line}" -lt 18 ]; do
+      line="$line "
+    done
+
+    line="$line$arg_description"
+
+    case "$arg_type" in
+      enum)
+        if [ -n "$arg_choices" ]; then
+          line="$line (choices: $arg_choices)"
+        fi
+        ;;
+    esac
+
+    if [ -n "$arg_default" ] && [ "$arg_type" != "flag" ]; then
+      line="$line (default: $arg_default)"
+    fi
+
+    printf '%s\n' "$line"
+  done <"$APP_ARGS_PATH"
+
+  printf '\nExamples:\n'
+  while IFS= read -r example || [ -n "$example" ]; do
+    [ -n "$example" ] || continue
+    printf '  %s\n' "$example"
+  done <"$APP_EXAMPLES_PATH"
+}
+
+runtime_export_hook_env() {
+  app_dir=$1
+
+  export APFELLER_APP_DIR="$app_dir"
+  export APFELLER_INPUT="${APPRUN_INPUT:-}"
+
+  while IFS="$TAB" read -r arg_name arg_type arg_long arg_short arg_description arg_default arg_choices; do
+    [ "$arg_name" = "name" ] && continue
+    [ -n "$arg_name" ] || continue
+    env_name=APFELLER_ARG_$(sanitize_name "$arg_name")
+    arg_value=$(runtime_get_arg_value "$arg_name")
+    export "$env_name=$arg_value"
+  done <"$APP_ARGS_PATH"
+}
+
+runtime_call_hook() {
+  app_dir=$1
+  hook_path=$2
+  [ -n "$hook_path" ] || return 0
+  "$app_dir/$hook_path"
+}
+
+runtime_render_prompt() {
+  prompt=$APFELLER_PROMPT_TEMPLATE
+  prompt=$(template_replace_literal "$prompt" "{{input}}" "${APPRUN_INPUT:-}")
+
+  while IFS="$TAB" read -r arg_name arg_type arg_long arg_short arg_description arg_default arg_choices; do
+    [ "$arg_name" = "name" ] && continue
+    [ -n "$arg_name" ] || continue
+    arg_value=$(runtime_get_arg_value "$arg_name")
+    prompt=$(template_replace_literal "$prompt" "{{arg.$arg_name}}" "$arg_value")
+  done <"$APP_ARGS_PATH"
+
+  printf '%s\n' "$prompt"
+}
+
+runtime_format_structured_text() {
+  response=$1
+  fields_csv=$2
+  response_single_line=$(printf '%s' "$response" | tr '\n' ' ')
+
+  old_ifs=$IFS
+  IFS=,
+  # shellcheck disable=SC2086
+  set -- $fields_csv
+  IFS=$old_ifs
+
+  while [ $# -gt 0 ]; do
+    field_name=$1
+    shift
+    next_field=${1-}
+
+    label="$field_name:"
+    case "$response_single_line" in
+      *"$label"*)
+        after_label=${response_single_line#*"$label"}
+        ;;
+      *)
+        fail "Error: apfel response for $APFELLER_APP_COMMAND is missing field: $field_name"
+        ;;
+    esac
+
+    if [ -n "$next_field" ]; then
+      next_label="$next_field:"
+      case "$after_label" in
+        *"$next_label"*)
+          field_value=${after_label%%"$next_label"*}
+          ;;
+        *)
+          fail "Error: apfel response for $APFELLER_APP_COMMAND is missing field: $next_field"
+          ;;
+      esac
+    else
+      field_value=$after_label
+    fi
+
+    field_value=$(trim "$field_value")
+    [ -n "$field_value" ] || fail "Error: apfel response for $APFELLER_APP_COMMAND returned an empty field: $field_name"
+    printf '%s: %s\n' "$field_name" "$field_value"
+  done
+}
+
+runtime_emit_shell_command() {
+  prompt=$1
+  response=$(apfeller_query "$APFELLER_PROMPT_MAX_OUTPUT_TOKENS" "$APFELLER_PROMPT_SYSTEM" "$prompt") || return $?
+  command_output=$(apfeller_clean_command "$response") || {
+    printf '%s\n' "Error: apfel did not return a usable command." >&2
+    return 1
+  }
+
+  printf '$ %s\n' "$command_output"
+
+  if [ "$RUN_SHOULD_COPY" = "1" ]; then
+    apfeller_copy "$command_output" || return $?
+    printf '%s\n' "(copied)"
+  fi
+
+  if [ "$RUN_SHOULD_EXECUTE" = "1" ] && apfeller_confirm "Run this? [y/N] "; then
+    /bin/sh -c "$command_output"
+  fi
+}
+
+runtime_emit_text() {
+  prompt=$1
+  response=$(apfeller_query "$APFELLER_PROMPT_MAX_OUTPUT_TOKENS" "$APFELLER_PROMPT_SYSTEM" "$prompt") || return $?
+  printf '%s\n' "$response"
+
+  if [ "$RUN_SHOULD_COPY" = "1" ]; then
+    apfeller_copy "$response" || return $?
+    printf '%s\n' "(copied)"
+  fi
+}
+
+runtime_emit_structured_text() {
+  prompt=$1
+  response=$(apfeller_query "$APFELLER_PROMPT_MAX_OUTPUT_TOKENS" "$APFELLER_PROMPT_SYSTEM" "$prompt") || return $?
+  formatted=$(runtime_format_structured_text "$response" "$APFELLER_OUTPUT_FIELDS")
+  printf '%s\n' "$formatted"
+
+  if [ "$RUN_SHOULD_COPY" = "1" ]; then
+    apfeller_copy "$formatted" || return $?
+    printf '%s\n' "(copied)"
+  fi
+}
+
+cmd_run_app() {
+  [ $# -ge 1 ] || fail "Usage: apfeller __run-app <app_dir> [args...]"
+
+  app_dir=$1
+  shift
+
+  load_runtime_manifest "$app_dir"
+  runtime_parse_args "$@"
+
+  if [ "$RUN_SHOW_HELP" = "1" ]; then
+    runtime_print_help
+    return 0
+  fi
+
+  runtime_export_hook_env "$app_dir"
+  if [ -n "$APFELLER_HOOK_PRE_RUN" ]; then
+    runtime_call_hook "$app_dir" "$APFELLER_HOOK_PRE_RUN"
+  fi
+
+  case "$APFELLER_OUTPUT_MODE" in
+    local_passthrough)
+      runtime_call_hook "$app_dir" "$APFELLER_HOOK_LOCAL_RUN"
+      ;;
+    shell_command|text|structured_text)
+      if [ -n "$APFELLER_HOOK_BUILD_PROMPT" ]; then
+        prompt=$(runtime_call_hook "$app_dir" "$APFELLER_HOOK_BUILD_PROMPT")
+      else
+        prompt=$(runtime_render_prompt)
+      fi
+
+      apfeller_require_context_budget \
+        "$APFELLER_APP_COMMAND" \
+        "$APFELLER_PROMPT_MAX_CONTEXT_TOKENS" \
+        "$APFELLER_PROMPT_MAX_INPUT_BYTES" \
+        "$APFELLER_PROMPT_MAX_OUTPUT_TOKENS" \
+        "$prompt" || return $?
+
+      case "$APFELLER_OUTPUT_MODE" in
+        shell_command)
+          runtime_emit_shell_command "$prompt"
+          ;;
+        text)
+          runtime_emit_text "$prompt"
+          ;;
+        structured_text)
+          runtime_emit_structured_text "$prompt"
+          ;;
+      esac
+      ;;
+    *)
+      fail "Unsupported output mode: $APFELLER_OUTPUT_MODE"
+      ;;
+  esac
 }
 
 cmd_list() {
@@ -540,7 +1356,8 @@ cmd_info() {
   printf 'version: %s\n' "$CAT_VERSION"
   printf 'summary: %s\n' "$CAT_SUMMARY"
   printf 'description: %s\n' "$CAT_DESCRIPTION"
-  printf 'entrypoint: %s\n' "$CAT_ENTRYPOINT"
+  printf 'command: %s\n' "$CAT_COMMAND"
+  printf 'kind: %s\n' "$CAT_KIND"
   printf 'requires: %s\n' "$requires"
   printf 'supported_shells: %s\n' "$supported_shells"
   printf 'bundle_archive: %s\n' "$CAT_BUNDLE_ARCHIVE"
@@ -579,7 +1396,7 @@ cmd_update() {
         return 0
       fi
       catalog_file=$(fetch_catalog)
-      while IFS="$TAB" read -r app_id version entrypoint installed_at; do
+      while IFS="$TAB" read -r app_id version command_name installed_at; do
         [ "$app_id" = "id" ] && continue
         install_app "$app_id" "$catalog_file"
       done <"$STATE_PATH"
@@ -653,6 +1470,9 @@ main() {
   shift
 
   case "$command_name" in
+    __run-app)
+      cmd_run_app "$@"
+      ;;
     list)
       cmd_list "$@"
       ;;
