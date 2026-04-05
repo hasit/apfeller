@@ -200,9 +200,9 @@ assert(downloadTotals["log-digest"] === 3, "download totals should support app i
 assert(typeof downloadTotals.cmd === "number" && downloadTotals.cmd !== 110, "download totals should ignore non-bundle assets");
 
 assert(api.constants.TABLE_COLUMN_COUNT === 5, "catalog table should expose the expected number of columns");
-assert(api.nextExpandedRowId("", "cmd") === "cmd", "opening a closed row should expand it");
-assert(api.nextExpandedRowId("cmd", "cmd") === "", "clicking the open row should collapse it");
-assert(api.nextExpandedRowId("cmd", "define") === "define", "opening a new row should replace the previous one");
+assert(api.constants.DETAIL_PANE_ID === "catalog-detail-pane", "catalog detail pane should expose a stable id");
+assert(api.defaultDetailTabId(cmd) === "examples", "apps with examples should default to the examples tab");
+assert(api.defaultDetailTabId({ help: { examples: [] } }) === "flags", "apps without examples should default to the flags tab");
 
 const row = {
   id: "cmd",
@@ -221,9 +221,10 @@ assert(!headerMarkup.includes(">Command<"), "catalog table header should not kee
 assert(!headerMarkup.includes(">Source<"), "catalog table header should not keep the source column");
 assert(headerMarkup.includes(">Downloads<"), "catalog table header should include the downloads column");
 
-const summaryCells = api.renderSummaryRowCellsMarkup(row);
+const summaryCells = api.renderSummaryRowCellsMarkup(row, false);
 assert(summaryCells.includes("catalog-row-toggle"), "collapsed rows should render a disclosure control");
-assert(summaryCells.includes("aria-controls=\"catalog-details-cmd\""), "collapsed rows should point at their detail row");
+assert(summaryCells.includes("aria-controls=\"catalog-detail-pane\""), "collapsed rows should point at the shared detail pane");
+assert(summaryCells.includes("aria-pressed=\"false\""), "collapsed rows should be unselected by default");
 assert(summaryCells.includes("Turn natural language into a shell command."), "collapsed rows should keep the short summary");
 assert(summaryCells.includes("catalog-app-name"), "collapsed rows should use the app name as the disclosure control");
 assert(!summaryCells.includes(row.description), "collapsed rows should not include the long description");
@@ -231,6 +232,9 @@ assert(!summaryCells.includes("catalog-command"), "collapsed rows should not inc
 assert(!summaryCells.includes(">Source<"), "collapsed rows should not include the source link");
 assert(!summaryCells.includes("catalog-chevron"), "collapsed rows should not include the old chevron affordance");
 assert(!summaryCells.includes("apfeller install cmd"), "collapsed rows should not include the install command");
+
+const selectedSummaryCells = api.renderSummaryRowCellsMarkup(row, true);
+assert(selectedSummaryCells.includes("aria-pressed=\"true\""), "selected rows should expose pressed state");
 
 const summaryWithDownloads = api.renderSummaryRowCellsMarkup({
   id: "define",
@@ -241,30 +245,37 @@ const summaryWithDownloads = api.renderSummaryRowCellsMarkup({
   supported_shells: "fish,zsh",
   kind: "ai-text",
   downloads: 12
-});
+}, false);
 assert(summaryWithDownloads.includes("12 downloads"), "collapsed rows should use generic download count copy");
 assert(!summaryWithDownloads.includes("GitHub downloads"), "collapsed rows should not mention GitHub in the download text");
 
-const detailRowMarkup = api.renderDetailRowMarkup("catalog-details-cmd", "<div>detail body</div>");
-assert(detailRowMarkup.includes("catalog-detail-row"), "expanded details should render as a dedicated detail row");
-assert(detailRowMarkup.includes("colspan=\"5\""), "detail rows should span the full table width");
-assert(detailRowMarkup.includes("detail body"), "detail row wrapper should preserve the provided detail markup");
+const placeholderMarkup = api.renderDetailPlaceholderMarkup();
+assert(placeholderMarkup.includes("Select an app to see install details"), "catalog detail pane should render an empty selection hint");
 
-const cmdDetails = api.renderDetailMarkup(row, cmd, "https://github.com/hasit/apfeller-apps/tree/main/apps/cmd");
-assert(cmdDetails.includes("catalog-detail-header"), "expanded details should render a dedicated header");
-assert(cmdDetails.includes("catalog-detail-title"), "expanded details should render the app title prominently");
-assert(cmdDetails.includes(">Source<"), "expanded details should include the source link");
-assert(cmdDetails.includes("catalog-command"), "expanded details should include the command in the detail header");
-assert(cmdDetails.includes("apfeller install cmd"), "expanded details should include the install command");
-assert(cmdDetails.includes("cmd [OPTIONS] &quot;what you want to do&quot;"), "expanded details should include usage");
-assert(cmdDetails.includes("--execute"), "expanded details should include built-in execute for command apps");
-assert(cmdDetails.includes("catalog-detail-meta"), "expanded details should render compact metadata rows");
-assert(!cmdDetails.includes("catalog-detail-facts"), "expanded details should not use the old fact card grid");
-assert(!cmdDetails.includes("catalog-detail-fact"), "expanded details should not use the old fact card items");
-assert(!cmdDetails.includes("catalog-detail-section-grid"), "expanded details should not use the old split section grid");
-assert(!cmdDetails.includes("catalog-detail-title-group"), "expanded details should not use the old title-group wrapper");
+const cmdDetails = api.renderDetailPaneMarkup(row, cmd, "https://github.com/hasit/apfeller-apps/tree/main/apps/cmd", "examples");
+assert(cmdDetails.includes("catalog-detail-header"), "selected app details should render a dedicated header");
+assert(cmdDetails.includes("catalog-detail-title"), "selected app details should render the app title prominently");
+assert(cmdDetails.includes(">Source<"), "selected app details should include the source link");
+assert(cmdDetails.includes("catalog-command"), "selected app details should include the command in the detail header");
+assert(cmdDetails.includes("apfeller install cmd"), "selected app details should include the install command");
+assert(cmdDetails.includes("cmd [OPTIONS] &quot;what you want to do&quot;"), "selected app details should include usage");
+assert(cmdDetails.includes("role=\"tablist\""), "selected app details should render accessible tabs");
+assert(cmdDetails.includes("role=\"tabpanel\""), "selected app details should render accessible tab panels");
+assert(cmdDetails.includes("data-tab=\"examples\""), "selected app details should expose an examples tab");
+assert(cmdDetails.includes("data-tab=\"flags\""), "selected app details should expose a flags tab");
+assert(cmdDetails.includes("aria-selected=\"true\""), "selected app details should mark the active tab");
+assert(cmdDetails.includes("catalog-detail-meta"), "selected app details should render overview metadata");
+assert(!cmdDetails.includes("catalog-detail-row"), "selected app details should not render inline table detail rows");
+assert(!cmdDetails.includes("catalog-detail-facts"), "selected app details should not use the old fact card grid");
+assert(!cmdDetails.includes("catalog-detail-fact"), "selected app details should not use the old fact card items");
+assert(!cmdDetails.includes("catalog-detail-section-grid"), "selected app details should not use the old split section grid");
+assert(!cmdDetails.includes("catalog-detail-title-group"), "selected app details should not use the old title-group wrapper");
 
-const gitsumDetails = api.renderDetailMarkup({
+const cmdFlagsDetails = api.renderDetailPaneMarkup(row, cmd, "https://github.com/hasit/apfeller-apps/tree/main/apps/cmd", "flags");
+assert(cmdFlagsDetails.includes("--execute"), "flags tab should include built-in execute for command apps");
+assert(cmdFlagsDetails.includes("hidden"), "inactive tab panels should stay hidden");
+
+const gitsumDetails = api.renderDetailPaneMarkup({
   id: "gitsum",
   command: "gitsum",
   summary: "Summarize recent git activity.",
@@ -272,12 +283,12 @@ const gitsumDetails = api.renderDetailMarkup({
   requires: "apfel,git",
   supported_shells: "fish,zsh",
   kind: "ai-text"
-}, gitsum, "https://github.com/hasit/apfeller-apps/tree/main/apps/gitsum");
+}, gitsum, "https://github.com/hasit/apfeller-apps/tree/main/apps/gitsum", "flags");
 assert(gitsumDetails.includes("-n, --count &lt;integer&gt;"), "expanded details should render integer args");
 assert(gitsumDetails.includes("-d, --diff"), "expanded details should render flag args");
 assert(gitsumDetails.includes("default: off"), "expanded details should describe flag defaults");
 
-const namingDetails = api.renderDetailMarkup({
+const namingDetails = api.renderDetailPaneMarkup({
   id: "naming",
   command: "naming",
   summary: "Suggest names for things.",
@@ -285,11 +296,12 @@ const namingDetails = api.renderDetailMarkup({
   requires: "apfel",
   supported_shells: "fish,zsh",
   kind: "ai-text"
-}, naming, "https://github.com/hasit/apfeller-apps/tree/main/apps/naming");
+}, naming, "https://github.com/hasit/apfeller-apps/tree/main/apps/naming", "flags");
 assert(namingDetails.includes("choices: mixed, camel, snake, kebab, title"), "expanded details should render enum choices");
 
-const fallbackMarkup = api.renderFallbackDetailMarkup(row, "https://github.com/hasit/apfeller-apps/tree/main/apps/cmd");
+const fallbackMarkup = api.renderFallbackDetailPaneMarkup(row, "https://github.com/hasit/apfeller-apps/tree/main/apps/cmd");
 assert(fallbackMarkup.includes(row.description), "fallback details should preserve the catalog description");
 assert(fallbackMarkup.includes("apps/cmd"), "fallback details should point users to the app source");
 assert(fallbackMarkup.includes("catalog-detail-meta"), "fallback details should reuse compact metadata rows");
+assert(!fallbackMarkup.includes("role=\"tablist\""), "fallback details should avoid tabs when the manifest is unavailable");
 assert(!fallbackMarkup.includes("catalog-detail-facts"), "fallback details should not render fact cards");

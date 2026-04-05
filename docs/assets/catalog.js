@@ -5,6 +5,7 @@
   var APP_MANIFEST_BASE_URL = "https://raw.githubusercontent.com/hasit/apfeller-apps/main/apps/";
   var RELEASES_API_URL = "https://api.github.com/repos/hasit/apfeller-apps/releases?per_page=100";
   var TABLE_COLUMN_COUNT = 5;
+  var DETAIL_PANE_ID = "catalog-detail-pane";
 
   function escapeHtml(value) {
     return String(value)
@@ -270,16 +271,8 @@
     return flags;
   }
 
-  function nextExpandedRowId(currentId, targetId) {
-    if (currentId === targetId) {
-      return "";
-    }
-
-    return targetId;
-  }
-
-  function detailIdForRow(row) {
-    return "catalog-details-" + String(row.id).replace(/[^A-Za-z0-9_-]/g, "-");
+  function safeIdFragment(value) {
+    return String(value).replace(/[^A-Za-z0-9_-]/g, "-");
   }
 
   function sourceUrlForRow(row) {
@@ -290,8 +283,8 @@
     return APP_MANIFEST_BASE_URL + encodeURIComponent(row.id) + "/app.toml";
   }
 
-  function renderInlineList(values) {
-    return escapeHtml(values.length ? values.join(", ") : "none");
+  function formatInlineList(values) {
+    return values.length ? values.join(", ") : "none";
   }
 
   function renderTableHeaderMarkup() {
@@ -308,36 +301,21 @@
     );
   }
 
-  function renderSummaryRowCellsMarkup(row) {
-    var detailId = detailIdForRow(row);
+  function renderSummaryRowCellsMarkup(row, isSelected) {
     var downloads = row.downloads > 0 ? escapeHtml(formatDownloads(row.downloads)) : "";
+    var requiresText = formatInlineList(splitCsv(row.requires));
+    var shellsText = formatInlineList(splitCsv(row.supported_shells));
 
     return (
       "<td class=\"catalog-col-app\">" +
-      "<button class=\"catalog-row-toggle\" type=\"button\" aria-expanded=\"false\" aria-controls=\"" + detailId + "\" aria-label=\"Show details for " + escapeHtml(row.id) + "\">" +
+      "<button class=\"catalog-row-toggle\" type=\"button\" aria-pressed=\"" + (isSelected ? "true" : "false") + "\" aria-controls=\"" + DETAIL_PANE_ID + "\" aria-label=\"Show details for " + escapeHtml(row.id) + "\">" +
       "<span class=\"catalog-app-name\">" + escapeHtml(row.id) + "</span>" +
       "</button>" +
       "</td>" +
       "<td class=\"catalog-col-summary\"><span class=\"catalog-summary\" title=\"" + escapeHtml(row.summary) + "\">" + escapeHtml(row.summary) + "</span></td>" +
-      "<td class=\"catalog-col-requires\"><span class=\"catalog-inline-list\">" + renderInlineList(splitCsv(row.requires)) + "</span></td>" +
-      "<td class=\"catalog-col-shells\"><span class=\"catalog-inline-list\">" + renderInlineList(splitCsv(row.supported_shells)) + "</span></td>" +
+      "<td class=\"catalog-col-requires\"><span class=\"catalog-inline-list\" title=\"" + escapeHtml(requiresText) + "\">" + escapeHtml(requiresText) + "</span></td>" +
+      "<td class=\"catalog-col-shells\"><span class=\"catalog-inline-list\" title=\"" + escapeHtml(shellsText) + "\">" + escapeHtml(shellsText) + "</span></td>" +
       "<td class=\"catalog-col-downloads\">" + (downloads ? "<span class=\"catalog-downloads\">" + downloads + "</span>" : "") + "</td>"
-    );
-  }
-
-  function renderDetailRowCellsMarkup(detailMarkup) {
-    return (
-      "<td colspan=\"" + TABLE_COLUMN_COUNT + "\">" +
-      "<div class=\"catalog-detail-inner\">" + detailMarkup + "</div>" +
-      "</td>"
-    );
-  }
-
-  function renderDetailRowMarkup(detailId, detailMarkup) {
-    return (
-      "<tr class=\"catalog-detail-row\" id=\"" + detailId + "\">" +
-      renderDetailRowCellsMarkup(detailMarkup) +
-      "</tr>"
     );
   }
 
@@ -376,6 +354,14 @@
     return names.join(", ") + suffix;
   }
 
+  function renderCodeMarkup(value) {
+    return (
+      "<div class=\"catalog-code-wrap\">" +
+      "<code class=\"catalog-detail-code\">" + escapeHtml(value) + "</code>" +
+      "</div>"
+    );
+  }
+
   function renderFlagListMarkup(flags) {
     return (
       "<ul class=\"catalog-option-list\">" +
@@ -396,7 +382,7 @@
 
         return (
           "<li class=\"catalog-option-item\">" +
-          "<code class=\"catalog-option-signature\">" + escapeHtml(flag.signature) + "</code>" +
+          "<div class=\"catalog-option-signature-wrap\"><code class=\"catalog-option-signature\">" + escapeHtml(flag.signature) + "</code></div>" +
           "<div class=\"catalog-option-copy\">" +
           "<p class=\"catalog-option-description\">" + escapeHtml(flag.description || "") + "</p>" +
           (meta.length ? "<p class=\"catalog-option-meta\">" + escapeHtml(meta.join(" · ")) + "</p>" : "") +
@@ -416,7 +402,7 @@
     return (
       "<ul class=\"catalog-example-list\">" +
       examples.map(function (example) {
-        return "<li><code>" + escapeHtml(example) + "</code></li>";
+        return "<li>" + renderCodeMarkup(example) + "</li>";
       }).join("") +
       "</ul>"
     );
@@ -431,21 +417,91 @@
     );
   }
 
-  function renderDetailMarkup(row, manifest, sourceUrl) {
+  function detailTabId(row, tabName) {
+    return "catalog-tab-" + safeIdFragment(row.id) + "-" + tabName;
+  }
+
+  function detailPanelId(row, tabName) {
+    return "catalog-panel-" + safeIdFragment(row.id) + "-" + tabName;
+  }
+
+  function defaultDetailTabId(manifest) {
+    var examples = manifest && manifest.help && Array.isArray(manifest.help.examples)
+      ? manifest.help.examples
+      : [];
+
+    return examples.length ? "examples" : "flags";
+  }
+
+  function renderDetailTabsMarkup(row, selectedTabId) {
+    var examplesTabId = detailTabId(row, "examples");
+    var flagsTabId = detailTabId(row, "flags");
+    var examplesPanelId = detailPanelId(row, "examples");
+    var flagsPanelId = detailPanelId(row, "flags");
+
+    return (
+      "<div class=\"catalog-tablist\" role=\"tablist\" aria-label=\"App details\">" +
+      "<button class=\"catalog-tab\" type=\"button\" role=\"tab\" id=\"" + examplesTabId + "\" aria-selected=\"" + (selectedTabId === "examples" ? "true" : "false") + "\" aria-controls=\"" + examplesPanelId + "\" data-tab=\"examples\">" +
+      "Examples" +
+      "</button>" +
+      "<button class=\"catalog-tab\" type=\"button\" role=\"tab\" id=\"" + flagsTabId + "\" aria-selected=\"" + (selectedTabId === "flags" ? "true" : "false") + "\" aria-controls=\"" + flagsPanelId + "\" data-tab=\"flags\">" +
+      "Flags" +
+      "</button>" +
+      "</div>"
+    );
+  }
+
+  function renderFlagsPanelMarkup(builtinFlags, appFlags) {
+    return (
+      "<div class=\"catalog-flags-panel\">" +
+      "<section class=\"catalog-detail-subsection\">" +
+      "<h4 class=\"catalog-subsection-title\">Built-in flags</h4>" +
+      renderFlagListMarkup(builtinFlags) +
+      "</section>" +
+      "<section class=\"catalog-detail-subsection\">" +
+      "<h4 class=\"catalog-subsection-title\">App flags</h4>" +
+      (appFlags.length
+        ? renderFlagListMarkup(appFlags)
+        : "<p class=\"catalog-detail-empty\">No app-specific flags.</p>") +
+      "</section>" +
+      "</div>"
+    );
+  }
+
+  function renderDetailOverviewMarkup(row, manifest) {
     var requires = Array.isArray(manifest.requires_commands) && manifest.requires_commands.length
       ? manifest.requires_commands
       : splitCsv(row.requires);
     var shells = Array.isArray(manifest.supported_shells) && manifest.supported_shells.length
       ? manifest.supported_shells
       : splitCsv(row.supported_shells);
-    var description = manifest.description || row.description;
+    var outputMode = manifest.output && manifest.output.mode ? manifest.output.mode : "";
     var usage = manifest.help && manifest.help.usage ? manifest.help.usage : "";
+
+    return (
+      "<section class=\"catalog-detail-overview\" aria-label=\"App details overview\">" +
+      "<dl class=\"catalog-detail-meta\">" +
+      renderDetailMetaRowMarkup("Install", renderCodeMarkup("apfeller install " + row.id)) +
+      (usage ? (
+        renderDetailMetaRowMarkup("Usage", renderCodeMarkup(usage))
+      ) : "") +
+      renderDetailMetaRowMarkup("Kind", "<span class=\"catalog-detail-value\">" + escapeHtml((manifest.kind || row.kind) + (outputMode ? " · " + outputMode : "")) + "</span>") +
+      renderDetailMetaRowMarkup("Requires", "<span class=\"catalog-detail-value\">" + escapeHtml(formatInlineList(requires)) + "</span>") +
+      renderDetailMetaRowMarkup("Shells", "<span class=\"catalog-detail-value\">" + escapeHtml(formatInlineList(shells)) + "</span>") +
+      "</dl>" +
+      "</section>"
+    );
+  }
+
+  function renderDetailPaneMarkup(row, manifest, sourceUrl, selectedTabId) {
+    var description = manifest.description || row.description;
     var examples = manifest.help && Array.isArray(manifest.help.examples) ? manifest.help.examples : [];
     var outputMode = manifest.output && manifest.output.mode ? manifest.output.mode : "";
     var builtinFlags = buildBuiltinFlags(outputMode);
     var downloads = row.downloads > 0
       ? "<span class=\"catalog-downloads\">" + escapeHtml(formatDownloads(row.downloads)) + "</span>"
       : "";
+    var activeTab = selectedTabId || defaultDetailTabId(manifest);
     var appFlags = (manifest.args || []).map(function (arg) {
       return {
         signature: renderOptionSignature(arg),
@@ -460,7 +516,7 @@
       "<div class=\"catalog-detail-panel\">" +
       "<div class=\"catalog-detail-header\">" +
       "<div class=\"catalog-detail-heading\">" +
-      "<h4 class=\"catalog-detail-title\">" + escapeHtml(row.id) + "</h4>" +
+      "<h3 class=\"catalog-detail-title\">" + escapeHtml(row.id) + "</h3>" +
       "<code class=\"catalog-command\">" + escapeHtml(manifest.command || row.command) + "</code>" +
       "</div>" +
       "<div class=\"catalog-detail-actions\">" +
@@ -469,47 +525,54 @@
       "</div>" +
       "</div>" +
       "<p class=\"catalog-detail-description\">" + escapeHtml(description) + "</p>" +
-      "<div class=\"catalog-detail-overview\">" +
-      "<section class=\"catalog-detail-section catalog-detail-section-meta\">" +
-      "<h5 class=\"catalog-section-title\">Details</h5>" +
-      "<dl class=\"catalog-detail-meta\">" +
-      renderDetailMetaRowMarkup("Command", "<code class=\"catalog-detail-code\">" + escapeHtml(manifest.command || row.command) + "</code>") +
-      renderDetailMetaRowMarkup("Install", "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>") +
-      (usage ? (
-        renderDetailMetaRowMarkup("Usage", "<code class=\"catalog-detail-code\">" + escapeHtml(usage) + "</code>")
-      ) : "") +
-      renderDetailMetaRowMarkup("Kind", "<span class=\"catalog-detail-value\">" + escapeHtml((manifest.kind || row.kind) + (outputMode ? " · " + outputMode : "")) + "</span>") +
-      renderDetailMetaRowMarkup("Requires", "<span class=\"catalog-detail-value\">" + renderInlineList(requires) + "</span>") +
-      renderDetailMetaRowMarkup("Shells", "<span class=\"catalog-detail-value\">" + renderInlineList(shells) + "</span>") +
-      "</dl>" +
-      "</section>" +
-      "<section class=\"catalog-detail-section catalog-detail-section-examples\">" +
-      "<h5 class=\"catalog-section-title\">Examples</h5>" +
+      renderDetailOverviewMarkup(row, manifest) +
+      renderDetailTabsMarkup(row, activeTab) +
+      "<section class=\"catalog-tabpanel\" role=\"tabpanel\" id=\"" + detailPanelId(row, "examples") + "\" aria-labelledby=\"" + detailTabId(row, "examples") + "\"" + (activeTab === "examples" ? "" : " hidden") + ">" +
       renderExamplesMarkup(examples) +
       "</section>" +
-      "</div>" +
-      "<div class=\"catalog-detail-flags\">" +
-      "<section class=\"catalog-detail-section\">" +
-      "<h5 class=\"catalog-section-title\">Built-in flags</h5>" +
-      renderFlagListMarkup(builtinFlags) +
+      "<section class=\"catalog-tabpanel\" role=\"tabpanel\" id=\"" + detailPanelId(row, "flags") + "\" aria-labelledby=\"" + detailTabId(row, "flags") + "\"" + (activeTab === "flags" ? "" : " hidden") + ">" +
+      renderFlagsPanelMarkup(builtinFlags, appFlags) +
       "</section>" +
-      "<section class=\"catalog-detail-section\">" +
-      "<h5 class=\"catalog-section-title\">App flags</h5>" +
-      (appFlags.length
-        ? renderFlagListMarkup(appFlags)
-        : "<p class=\"catalog-detail-empty\">No app-specific flags.</p>") +
-      "</section>" +
-      "</div>" +
       "</div>"
     );
   }
 
-  function renderFallbackDetailMarkup(row, sourceUrl) {
+  function renderDetailPlaceholderMarkup() {
+    return (
+      "<section class=\"catalog-detail-placeholder\">" +
+      "<p>Select an app to see install details, examples, and flags below.</p>" +
+      "</section>"
+    );
+  }
+
+  function renderDetailLoadingMarkup(row) {
+    return (
+      "<section class=\"catalog-detail-placeholder\">" +
+      "<p class=\"catalog-detail-loading\">Loading details for " + escapeHtml(row.id) + "...</p>" +
+      "</section>"
+    );
+  }
+
+  function renderFallbackDetailPaneMarkup(row, sourceUrl) {
+    var manifest = {
+      command: row.command,
+      kind: row.kind,
+      requires_commands: splitCsv(row.requires),
+      supported_shells: splitCsv(row.supported_shells),
+      description: row.description,
+      help: {
+        examples: []
+      },
+      output: {
+        mode: ""
+      }
+    };
+
     return (
       "<div class=\"catalog-detail-panel\">" +
       "<div class=\"catalog-detail-header\">" +
       "<div class=\"catalog-detail-heading\">" +
-      "<h4 class=\"catalog-detail-title\">" + escapeHtml(row.id) + "</h4>" +
+      "<h3 class=\"catalog-detail-title\">" + escapeHtml(row.id) + "</h3>" +
       "<code class=\"catalog-command\">" + escapeHtml(row.command) + "</code>" +
       "</div>" +
       "<div class=\"catalog-detail-actions\">" +
@@ -517,15 +580,7 @@
       "</div>" +
       "</div>" +
       "<p class=\"catalog-detail-description\">" + escapeHtml(row.description) + "</p>" +
-      "<section class=\"catalog-detail-section catalog-detail-section-meta\">" +
-      "<h5 class=\"catalog-section-title\">Details</h5>" +
-      "<dl class=\"catalog-detail-meta\">" +
-      renderDetailMetaRowMarkup("Command", "<code class=\"catalog-detail-code\">" + escapeHtml(row.command) + "</code>") +
-      renderDetailMetaRowMarkup("Install", "<code class=\"catalog-detail-code\">apfeller install " + escapeHtml(row.id) + "</code>") +
-      renderDetailMetaRowMarkup("Requires", "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.requires)) + "</span>") +
-      renderDetailMetaRowMarkup("Shells", "<span class=\"catalog-detail-value\">" + renderInlineList(splitCsv(row.supported_shells)) + "</span>") +
-      "</dl>" +
-      "</section>" +
+      renderDetailOverviewMarkup(row, manifest) +
       "<p class=\"catalog-detail-empty\">Could not load the full app manifest right now.</p>" +
       "<p class=\"catalog-detail-source\">Open the source for usage, examples, and app flags: <a href=\"" + sourceUrl + "\">apps/" + escapeHtml(row.id) + "</a></p>" +
       "</div>"
@@ -602,10 +657,13 @@
     var statusNode = env.statusNode;
     var hostNode = env.hostNode;
     var detailCache = Object.create(null);
-    var expandedId = "";
-    var expandedSummaryRow = null;
-    var expandedDetailRow = null;
-    var detailToken = 0;
+    var selectedId = "";
+    var selectedSummaryRow = null;
+    var selectedRowData = null;
+    var selectedManifest = null;
+    var selectedFallback = false;
+    var selectedTabId = "";
+    var detailHost = null;
 
     function setStatus(message, state) {
       statusNode.textContent = message;
@@ -647,85 +705,112 @@
       return detailCache[row.id];
     }
 
-    function setSummaryExpandedState(summaryRow, isExpanded) {
+    function setSummarySelectedState(summaryRow, isSelected) {
       var toggle = summaryRow.querySelector(".catalog-row-toggle");
       var row = summaryRow.__catalogRow;
 
-      if (isExpanded) {
-        summaryRow.setAttribute("data-expanded", "true");
-        toggle.setAttribute("aria-expanded", "true");
-        toggle.setAttribute("aria-label", "Hide details for " + row.id);
+      if (isSelected) {
+        summaryRow.setAttribute("data-selected", "true");
+        toggle.setAttribute("aria-pressed", "true");
+        toggle.setAttribute("aria-label", "Viewing details for " + row.id);
       } else {
-        summaryRow.removeAttribute("data-expanded");
-        toggle.setAttribute("aria-expanded", "false");
+        summaryRow.removeAttribute("data-selected");
+        toggle.setAttribute("aria-pressed", "false");
         toggle.setAttribute("aria-label", "Show details for " + row.id);
       }
     }
 
-    function removeExpandedRow() {
-      if (expandedSummaryRow) {
-        setSummaryExpandedState(expandedSummaryRow, false);
+    function renderDetailPlaceholder() {
+      if (!detailHost) {
+        return;
       }
 
-      if (expandedDetailRow && expandedDetailRow.parentNode) {
-        expandedDetailRow.parentNode.removeChild(expandedDetailRow);
+      detailHost.innerHTML = renderDetailPlaceholderMarkup();
+    }
+
+    function renderSelectedDetail() {
+      if (!detailHost || !selectedRowData) {
+        renderDetailPlaceholder();
+        return;
       }
 
-      expandedId = "";
-      expandedSummaryRow = null;
-      expandedDetailRow = null;
+      if (!selectedManifest && !selectedFallback) {
+        detailHost.innerHTML = renderDetailLoadingMarkup(selectedRowData);
+        return;
+      }
+
+      if (selectedFallback) {
+        detailHost.innerHTML = renderFallbackDetailPaneMarkup(selectedRowData, sourceUrlForRow(selectedRowData));
+        return;
+      }
+
+      detailHost.innerHTML = renderDetailPaneMarkup(
+        selectedRowData,
+        selectedManifest,
+        sourceUrlForRow(selectedRowData),
+        selectedTabId
+      );
     }
 
-    function createDetailRow(row, detailMarkup) {
-      var detailRow = documentRef.createElement("tr");
-      detailRow.className = "catalog-detail-row";
-      detailRow.id = detailIdForRow(row);
-      detailRow.innerHTML = renderDetailRowCellsMarkup(detailMarkup);
-      return detailRow;
-    }
-
-    function expandSummaryRow(summaryRow) {
+    function selectSummaryRow(summaryRow) {
       var row = summaryRow.__catalogRow;
-      var sourceUrl = sourceUrlForRow(row);
-      var token = String(detailToken += 1);
 
-      if (expandedSummaryRow && expandedSummaryRow !== summaryRow) {
-        removeExpandedRow();
+      if (selectedSummaryRow === summaryRow) {
+        return;
       }
 
-      setSummaryExpandedState(summaryRow, true);
-      expandedId = row.id;
-      expandedSummaryRow = summaryRow;
-      expandedDetailRow = createDetailRow(row, "<p class=\"catalog-detail-loading\">Loading details...</p>");
-      expandedDetailRow.setAttribute("data-detail-token", token);
-      summaryRow.parentNode.insertBefore(expandedDetailRow, summaryRow.nextSibling);
+      if (selectedSummaryRow) {
+        setSummarySelectedState(selectedSummaryRow, false);
+      }
+
+      selectedId = row.id;
+      selectedSummaryRow = summaryRow;
+      selectedRowData = row;
+      selectedManifest = null;
+      selectedFallback = false;
+      selectedTabId = "";
+      setSummarySelectedState(summaryRow, true);
+      renderSelectedDetail();
 
       loadAppDetails(row).then(function (manifest) {
-        var detailMarkup;
-
-        if (!expandedDetailRow || expandedId !== row.id || expandedDetailRow.getAttribute("data-detail-token") !== token) {
+        if (selectedId !== row.id) {
           return;
         }
 
         if (manifest) {
-          detailMarkup = renderDetailMarkup(row, manifest, sourceUrl);
+          selectedManifest = manifest;
+          selectedFallback = false;
+          selectedTabId = defaultDetailTabId(manifest);
         } else {
-          detailMarkup = renderFallbackDetailMarkup(row, sourceUrl);
+          selectedManifest = null;
+          selectedFallback = true;
+          selectedTabId = "";
         }
 
-        expandedDetailRow.innerHTML = renderDetailRowCellsMarkup(detailMarkup);
+        renderSelectedDetail();
       });
     }
 
-    function toggleSummaryRow(summaryRow) {
-      var nextId = nextExpandedRowId(expandedId, summaryRow.getAttribute("data-app-id"));
+    function handleDetailClick(event) {
+      var tabButton;
+      var nextTabId;
 
-      if (!nextId) {
-        removeExpandedRow();
+      if (!detailHost || !selectedManifest) {
         return;
       }
 
-      expandSummaryRow(summaryRow);
+      tabButton = event.target && event.target.closest ? event.target.closest(".catalog-tab") : null;
+      if (!tabButton || !detailHost.contains(tabButton)) {
+        return;
+      }
+
+      nextTabId = tabButton.getAttribute("data-tab");
+      if (!nextTabId || nextTabId === selectedTabId) {
+        return;
+      }
+
+      selectedTabId = nextTabId;
+      renderSelectedDetail();
     }
 
     function createSummaryRow(row) {
@@ -735,20 +820,20 @@
       summaryRow.className = "catalog-row";
       summaryRow.setAttribute("data-app-id", row.id);
       summaryRow.__catalogRow = row;
-      summaryRow.innerHTML = renderSummaryRowCellsMarkup(row);
+      summaryRow.innerHTML = renderSummaryRowCellsMarkup(row, false);
 
       toggle = summaryRow.querySelector(".catalog-row-toggle");
 
       toggle.addEventListener("click", function (event) {
         event.stopPropagation();
-        toggleSummaryRow(summaryRow);
+        selectSummaryRow(summaryRow);
       });
 
       summaryRow.addEventListener("click", function (event) {
         if (event.target && event.target.closest && event.target.closest("a,button")) {
           return;
         }
-        toggleSummaryRow(summaryRow);
+        selectSummaryRow(summaryRow);
       });
 
       return summaryRow;
@@ -757,8 +842,14 @@
     function renderCatalog(rows) {
       var tbody;
 
-      removeExpandedRow();
+      selectedId = "";
+      selectedSummaryRow = null;
+      selectedRowData = null;
+      selectedManifest = null;
+      selectedFallback = false;
+      selectedTabId = "";
       hostNode.innerHTML =
+        "<div class=\"catalog-browser\">" +
         "<div class=\"catalog-table-shell\">" +
         "<div class=\"catalog-table-frame\">" +
         "<table class=\"catalog-table\">" +
@@ -766,9 +857,16 @@
         "<tbody></tbody>" +
         "</table>" +
         "</div>" +
+        "</div>" +
+        "<section class=\"catalog-detail-shell\" aria-label=\"Selected app details\">" +
+        "<div class=\"catalog-detail-host\" id=\"" + DETAIL_PANE_ID + "\" aria-live=\"polite\"></div>" +
+        "</section>" +
         "</div>";
 
       tbody = hostNode.querySelector("tbody");
+      detailHost = hostNode.querySelector(".catalog-detail-host");
+      detailHost.addEventListener("click", handleDetailClick);
+      renderDetailPlaceholder();
       rows.forEach(function (row) {
         tbody.appendChild(createSummaryRow(row));
       });
@@ -824,19 +922,20 @@
     parseAppManifest: parseAppManifest,
     buildDownloadTotals: buildDownloadTotals,
     buildBuiltinFlags: buildBuiltinFlags,
-    nextExpandedRowId: nextExpandedRowId,
+    defaultDetailTabId: defaultDetailTabId,
     renderTableHeaderMarkup: renderTableHeaderMarkup,
     renderSummaryRowCellsMarkup: renderSummaryRowCellsMarkup,
-    renderDetailRowMarkup: renderDetailRowMarkup,
-    renderDetailMarkup: renderDetailMarkup,
-    renderFallbackDetailMarkup: renderFallbackDetailMarkup,
+    renderDetailPaneMarkup: renderDetailPaneMarkup,
+    renderFallbackDetailPaneMarkup: renderFallbackDetailPaneMarkup,
+    renderDetailPlaceholderMarkup: renderDetailPlaceholderMarkup,
     createCatalogApp: createCatalogApp,
     constants: {
       CATALOG_URL: CATALOG_URL,
       APP_SOURCE_BASE_URL: APP_SOURCE_BASE_URL,
       APP_MANIFEST_BASE_URL: APP_MANIFEST_BASE_URL,
       RELEASES_API_URL: RELEASES_API_URL,
-      TABLE_COLUMN_COUNT: TABLE_COLUMN_COUNT
+      TABLE_COLUMN_COUNT: TABLE_COLUMN_COUNT,
+      DETAIL_PANE_ID: DETAIL_PANE_ID
     }
   };
 

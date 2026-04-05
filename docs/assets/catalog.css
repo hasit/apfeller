@@ -14,6 +14,11 @@
   background: #fdeee9;
 }
 
+.catalog-browser {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .catalog-table-shell {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -36,7 +41,7 @@
 
 .catalog-table th,
 .catalog-table td {
-  padding: 0.72rem 0.8rem;
+  padding: 0.62rem 0.72rem;
   border-bottom: 1px solid #e9dfcf;
   vertical-align: top;
 }
@@ -67,32 +72,35 @@
   background: #fffaf1;
 }
 
-.catalog-row[data-expanded="true"] td {
-  background: #fff8ed;
-  border-bottom-color: transparent;
+.catalog-row[data-selected="true"] td {
+  background: #fff7ea;
 }
 
 .catalog-col-app {
-  width: 9rem;
+  width: 8.5rem;
 }
 
 .catalog-col-summary {
-  width: 42%;
+  width: 46%;
 }
 
-.catalog-col-requires,
+.catalog-col-requires {
+  width: 17%;
+}
+
 .catalog-col-shells {
-  width: 14%;
+  width: 11%;
 }
 
 .catalog-col-downloads {
-  width: 8.5rem;
+  width: 8rem;
   text-align: right;
   white-space: nowrap;
 }
 
 .catalog-row-toggle {
-  display: inline;
+  display: block;
+  width: 100%;
   padding: 0;
   border: 0;
   background: transparent;
@@ -105,34 +113,31 @@
 .catalog-row-toggle:focus-visible {
   outline: 2px solid #a76b2a;
   outline-offset: 3px;
-  border-radius: 0.35rem;
+  border-radius: 0.2rem;
 }
 
 .catalog-app-name {
   font-weight: 600;
 }
 
-.catalog-command {
-  font-size: 0.74rem;
+.catalog-summary,
+.catalog-inline-list {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .catalog-summary {
-  display: block;
-  overflow: hidden;
   color: #4f473a;
-  font-size: 0.82rem;
-  line-height: 1.34;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  font-size: 0.81rem;
+  line-height: 1.25;
 }
 
 .catalog-inline-list {
   color: #5b503d;
-  font-size: 0.78rem;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
+  font-size: 0.77rem;
+  line-height: 1.25;
 }
 
 .catalog-downloads {
@@ -141,44 +146,41 @@
   font-variant-numeric: tabular-nums;
 }
 
-.catalog-source-link,
-.catalog-detail-source {
-  font-size: 0.76rem;
+.catalog-detail-shell {
+  min-height: 2.5rem;
 }
 
-.catalog-detail-row td {
-  padding: 0;
-  background: #fffaf1;
-  border-bottom: 1px solid #e9dfcf;
+.catalog-detail-host {
+  min-width: 0;
 }
 
-.catalog-detail-inner {
-  padding: 0.42rem 0.58rem 0.5rem;
+.catalog-detail-panel,
+.catalog-detail-placeholder {
+  min-width: 0;
 }
 
-.catalog-detail-loading,
-.catalog-detail-empty,
+.catalog-detail-placeholder {
+  color: #6a5d49;
+  font-size: 0.82rem;
+}
+
+.catalog-detail-placeholder p,
 .catalog-detail-description,
+.catalog-detail-empty,
 .catalog-detail-source {
   margin: 0;
 }
 
-.catalog-detail-loading,
-.catalog-detail-empty {
-  color: #6a5d49;
-  font-size: 0.8rem;
-}
-
 .catalog-detail-panel {
   display: grid;
-  gap: 0.38rem;
+  gap: 0.55rem;
 }
 
 .catalog-detail-header {
   display: flex;
-  align-items: baseline;
   justify-content: space-between;
-  gap: 0.22rem 0.6rem;
+  align-items: baseline;
+  gap: 0.35rem 0.8rem;
   flex-wrap: wrap;
 }
 
@@ -186,133 +188,162 @@
 .catalog-detail-actions {
   display: flex;
   align-items: baseline;
-  gap: 0.22rem;
+  gap: 0.35rem;
   flex-wrap: wrap;
 }
 
 .catalog-detail-title {
   margin: 0;
   color: #2f271d;
-  font-size: 0.84rem;
+  font-size: 0.96rem;
   line-height: 1.1;
+}
+
+.catalog-command {
+  color: #5d5140;
+  font-size: 0.76rem;
+}
+
+.catalog-source-link,
+.catalog-detail-source {
+  font-size: 0.76rem;
 }
 
 .catalog-detail-description {
   color: #544a3a;
-  font-size: 0.74rem;
-  line-height: 1.26;
-}
-
-.catalog-detail-overview,
-.catalog-detail-flags {
-  display: grid;
-  gap: 0.6rem;
-  align-items: start;
+  font-size: 0.82rem;
+  line-height: 1.4;
 }
 
 .catalog-detail-overview {
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
-}
-
-.catalog-detail-flags {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
 }
 
 .catalog-detail-meta {
   margin: 0;
   display: grid;
-  gap: 0.08rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.28rem 1rem;
 }
 
 .catalog-detail-meta-row {
   display: grid;
-  grid-template-columns: 3.9rem minmax(0, 1fr);
-  gap: 0.3rem;
+  grid-template-columns: 4.6rem minmax(0, 1fr);
+  gap: 0.42rem;
   align-items: start;
-  padding: 0.02rem 0;
+  margin: 0;
 }
 
 .catalog-detail-label {
   color: #695a44;
-  font-size: 0.64rem;
+  font-size: 0.66rem;
   font-weight: 600;
   letter-spacing: 0.01em;
   text-transform: uppercase;
-  margin: 0;
+  white-space: nowrap;
 }
 
 .catalog-detail-meta-value {
-  margin: 0;
   min-width: 0;
-}
-
-.catalog-section-title {
-  color: #54452f;
-  font-size: 0.64rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
-  margin: 0 0 0.06rem;
-}
-
-.catalog-detail-code {
-  font-size: 0.69rem;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  margin: 0;
 }
 
 .catalog-detail-value {
   color: #43392c;
-  font-size: 0.72rem;
-  line-height: 1.2;
+  font-size: 0.78rem;
+  line-height: 1.3;
 }
 
-.catalog-detail-section {
+.catalog-code-wrap {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.catalog-detail-code {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 0.74rem;
+}
+
+.catalog-tablist {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-end;
+  border-bottom: 1px solid #e6dbc8;
+}
+
+.catalog-tab {
+  padding: 0 0 0.38rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #6a5d49;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.catalog-tab[aria-selected="true"] {
+  color: #2f271d;
+  border-bottom-color: #a76b2a;
+}
+
+.catalog-tab:focus-visible {
+  outline: 2px solid #a76b2a;
+  outline-offset: 2px;
+  border-radius: 0.2rem;
+}
+
+.catalog-tabpanel {
+  min-width: 0;
+  padding-top: 0.1rem;
+}
+
+.catalog-flags-panel {
   display: grid;
-  gap: 0.12rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.catalog-detail-subsection {
+  display: grid;
+  gap: 0.18rem;
   min-width: 0;
 }
 
-.catalog-detail-section-examples {
-  align-content: start;
+.catalog-subsection-title {
+  margin: 0;
+  color: #54452f;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .catalog-example-list,
 .catalog-option-list {
   margin: 0;
   padding: 0;
+  list-style: none;
 }
 
 .catalog-example-list {
   display: grid;
-  gap: 0.04rem;
-  padding-left: 0;
-  list-style: none;
-}
-
-.catalog-example-list li {
-  padding: 0;
-}
-
-.catalog-example-list code {
-  display: block;
-  max-width: 100%;
-  font-size: 0.68rem;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  gap: 0.22rem;
 }
 
 .catalog-option-list {
   display: grid;
   gap: 0;
-  list-style: none;
 }
 
 .catalog-option-item {
   display: grid;
-  grid-template-columns: minmax(6.4rem, max-content) minmax(0, 1fr);
-  gap: 0.35rem;
-  padding: 0.14rem 0;
+  grid-template-columns: minmax(8rem, max-content) minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.22rem 0;
   border-top: 1px solid #efe4d2;
   align-items: start;
 }
@@ -321,21 +352,27 @@
   border-top: 0;
 }
 
+.catalog-option-signature-wrap {
+  min-width: 0;
+}
+
 .catalog-option-signature {
   display: inline-block;
-  font-size: 0.68rem;
+  white-space: nowrap;
+  font-size: 0.73rem;
 }
 
 .catalog-option-copy {
   display: grid;
-  gap: 0.02rem;
+  gap: 0.05rem;
+  min-width: 0;
 }
 
 .catalog-option-description,
 .catalog-option-meta {
   margin: 0;
-  font-size: 0.7rem;
-  line-height: 1.16;
+  font-size: 0.75rem;
+  line-height: 1.28;
 }
 
 .catalog-option-description {
@@ -344,6 +381,12 @@
 
 .catalog-option-meta {
   color: #75664d;
+}
+
+.catalog-detail-loading,
+.catalog-detail-empty {
+  color: #6a5d49;
+  font-size: 0.78rem;
 }
 
 .catalog-empty {
@@ -361,11 +404,18 @@
   margin: 0.3rem 0 0;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 780px) {
   .catalog-table {
     table-layout: auto;
   }
 
+  .catalog-detail-meta,
+  .catalog-flags-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
   .catalog-col-summary,
   .catalog-col-requires,
   .catalog-col-shells,
@@ -374,19 +424,14 @@
     width: auto;
   }
 
-  .catalog-detail-overview,
-  .catalog-detail-flags {
-    grid-template-columns: 1fr;
-    gap: 0.45rem;
-  }
-
-  .catalog-detail-meta-row {
-    grid-template-columns: 1fr;
-    gap: 0.08rem;
-  }
-
+  .catalog-detail-meta-row,
   .catalog-option-item {
     grid-template-columns: 1fr;
     gap: 0.08rem;
+  }
+
+  .catalog-detail-label,
+  .catalog-option-signature {
+    white-space: normal;
   }
 }
