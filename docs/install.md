@@ -14,8 +14,6 @@ page_id: install
   <code>curl -fsSL https://raw.githubusercontent.com/hasit/apfeller/main/install.sh | sh</code>
 </div>
 
-<p class="small-note">This public install path downloads the latest manager release asset and wires in completions plus shell setup where it can do so safely.</p>
-
 ## Before You Start
 
 - `apfeller` is for macOS.
@@ -36,24 +34,11 @@ apfeller install <app>
 
 ## What the Installer Does
 
-<div class="feature-grid">
-  <section class="feature-card">
-    <h3>Install the manager</h3>
-    <p>Downloads the latest <code>apfeller.tar.gz</code> release asset and installs <code>apfeller</code> into <code>~/.local/bin</code>.</p>
-  </section>
-  <section class="feature-card">
-    <h3>Set up completions</h3>
-    <p>Installs manager completions for the supported shells so the base command is ready immediately after install.</p>
-  </section>
-  <section class="feature-card">
-    <h3>Configure your shell carefully</h3>
-    <p>Writes Fish or zsh shell setup when the shell can be detected, and falls back to one manual <code>PATH</code> command when it cannot.</p>
-  </section>
-  <section class="feature-card">
-    <h3>Stay manager-focused</h3>
-    <p>The installer only sets up the manager itself. Individual apps remain opt-in and are installed later from the published catalog.</p>
-  </section>
-</div>
+- Downloads the latest `apfeller.tar.gz` release asset.
+- Installs `apfeller` into `~/.local/bin`.
+- Installs manager completions.
+- Writes Fish or zsh shell setup for the detected shell.
+- If the shell cannot be detected, installs the binary anyway and prints one manual `PATH` command instead of guessing.
 
 ## Installed Locations
 
@@ -76,6 +61,8 @@ If you need to point at a different catalog, set `APFELLER_CATALOG_URL` before r
 ```sh
 APFELLER_CATALOG_URL="file://$PWD/dist/apfeller-catalog.tsv" apfeller list
 ```
+
+That is useful when you are testing a local catalog or a locally packaged app bundle.
 
 ## Guides
 

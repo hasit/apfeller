@@ -29,16 +29,7 @@ apfeller install <app>
 apfeller uninstall <app>
 ```
 
-<div class="feature-grid">
-  <section class="feature-card">
-    <h3>Inspect before install</h3>
-    <p><code>apfeller info &lt;app&gt;</code> gives you a quick read on the command name, requirements, and packaging details before you install.</p>
-  </section>
-  <section class="feature-card">
-    <h3>Keep installs narrow</h3>
-    <p>Only the apps you ask for land in your local store, so the manager stays useful even when the public catalog keeps growing.</p>
-  </section>
-</div>
+Use `apfeller info <app>` if you want to inspect the command name, requirements, and packaging details before you install.
 
 ## Keep Things Updated
 
@@ -60,7 +51,7 @@ apfeller doctor
 
 This reports whether `apfeller` can see the tools and shell integration it needs, including `curl`, `tar`, `shasum`, and any older state files worth cleaning up.
 
-## A Typical Session
+## A Simple Session
 
 ```sh
 apfeller list

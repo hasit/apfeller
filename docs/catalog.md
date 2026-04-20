@@ -12,12 +12,11 @@ page_id: catalog
 
 This page shows the apps that are installable right now. It loads the published catalog from `hasit/apfeller-apps`, so newly published apps appear here without editing this site.
 
-<div class="button-row">
-  <a class="button-link button-link-primary" href="../install/">install apfeller</a>
-  <a class="button-link" href="https://raw.githubusercontent.com/hasit/apfeller-apps/main/catalog/latest.tsv">open raw catalog</a>
-</div>
+Install `apfeller` first, then pick an app below and run `apfeller install <app>`.
 
-<p class="small-note">Select an app row to see install details, examples, and flags below. Install <code>apfeller</code> first, then pick an app and run <code>apfeller install &lt;app&gt;</code>.</p>
+Select an app row to see install details, examples, and flags below the table.
+
+If you want the published source data directly, open the [raw catalog](https://raw.githubusercontent.com/hasit/apfeller-apps/main/catalog/latest.tsv) or browse [apfeller-apps](https://github.com/hasit/apfeller-apps).
 
 ## Published Apps
 
