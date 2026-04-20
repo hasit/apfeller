@@ -220,46 +220,51 @@ pre {
 
 .command-rail,
 .catalog-copyable {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  margin: 1rem 0;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 0.45rem;
-  background: var(--paper);
+  max-width: 100%;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+  padding: 0.22rem 0.32rem 0.22rem 0.5rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 0.28rem;
+  background: var(--paper-soft);
+  vertical-align: top;
 }
 
 .command-rail code,
 .catalog-copyable code {
   display: block;
+  max-width: 100%;
   white-space: nowrap;
   overflow-x: auto;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--ink);
-  font-size: 0.88rem;
+  font-size: 0.81rem;
 }
 
 .copy-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: var(--copy-button-size);
-  min-height: var(--copy-button-size);
-  padding: 0.35rem 0.55rem;
-  border: 1px solid var(--line);
-  border-radius: 0.3rem;
-  background: var(--paper);
+  min-width: auto;
+  min-height: auto;
+  padding: 0.05rem 0 0.05rem 0.4rem;
+  border: 0;
+  border-left: 1px solid var(--line-soft);
+  border-radius: 0;
+  background: transparent;
   color: var(--ink-muted);
   cursor: pointer;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  flex: 0 0 auto;
 }
 
 .copy-button:hover {
   color: var(--ink);
-  border-color: #c9baa4;
 }
 
 .copy-button[data-copy-state="copied"] {
@@ -297,15 +302,41 @@ pre {
   position: relative;
 }
 
-.site-shell-block .copy-button {
-  position: absolute;
-  top: 0.55rem;
-  right: 0.55rem;
+.site-shell-command {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  gap: 0.4rem;
+  margin: 0.45rem 0 0.75rem;
+  padding: 0.22rem 0.32rem 0.22rem 0.5rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 0.28rem;
+  background: var(--paper-soft);
+  vertical-align: top;
 }
 
-.site-shell-block pre {
-  margin-top: 0;
-  padding-right: 4rem;
+.site-shell-command pre,
+.site-shell-command .highlighter-rouge {
+  margin: 0;
+}
+
+.site-shell-command pre {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.site-shell-command pre code {
+  display: block;
+  max-width: 100%;
+  font-size: 0.81rem;
+  line-height: 1.4;
+}
+
+.site-shell-command .copy-button {
+  position: static;
 }
 
 .site-footer {
@@ -353,23 +384,16 @@ pre {
   }
 
   .command-rail,
-  .catalog-copyable {
-    grid-template-columns: 1fr;
-    justify-items: start;
+  .catalog-copyable,
+  .site-shell-command {
+    display: flex;
+    width: 100%;
   }
 
   .command-rail code,
-  .catalog-copyable code {
+  .catalog-copyable code,
+  .site-shell-command pre code {
     white-space: normal;
     word-break: break-word;
-  }
-
-  .site-shell-block .copy-button {
-    position: static;
-    margin: 0 0 0.5rem;
-  }
-
-  .site-shell-block pre {
-    padding-right: 1rem;
   }
 }

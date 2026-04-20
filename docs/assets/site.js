@@ -146,6 +146,7 @@
       }
 
       container.classList.add("site-shell-block");
+      container.classList.add("site-shell-command");
       container.appendChild(createCopyButton(codeText, "Copy"));
       container.setAttribute("data-copy-ready", "true");
     });
