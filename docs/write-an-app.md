@@ -1,23 +1,22 @@
 ---
+layout: default
 title: Write an app
+description: Write and test an apfeller app locally without diving into the public release workflow.
 permalink: /write-an-app/
+page_id: write-an-app
 ---
 
 # Write an app
 
-This page focuses on writing and testing an `apfeller` app locally. It does not
-cover the public release workflow.
+This page focuses on writing and testing an `apfeller` app locally. It stays intentionally focused on authoring and local validation rather than the public release workflow.
 
-`apfeller` app sources live in the separate
-[`apfeller-apps`](https://github.com/hasit/apfeller-apps) repo. Each app lives
-under `apps/<id>/app.toml`, with optional shell hooks under `apps/<id>/hooks/`.
+`apfeller` app sources live in the separate [`apfeller-apps`](https://github.com/hasit/apfeller-apps) repo. Each app lives under `apps/<id>/app.toml`, with optional shell hooks under `apps/<id>/hooks/`.
 
 ## App Layout
 
 - `apps/<id>/app.toml`: the app definition
 - `apps/<id>/hooks/build_prompt.sh`: optional hook that prints the final prompt
-- `apps/<id>/hooks/pre_run.sh`: optional hook that validates or prepares before
-  the app runs
+- `apps/<id>/hooks/pre_run.sh`: optional hook that validates or prepares before the app runs
 
 ## Minimal Example
 
@@ -67,8 +66,7 @@ Required sections for the currently supported app kinds:
 - `[help]` with `usage` and `examples`
 - `[input]` with `mode`, `name`, and `required`
 - `[output]` with `mode`
-- `[prompt]` with `system`, `template`, `max_context_tokens`,
-  `max_input_bytes`, and `max_output_tokens`
+- `[prompt]` with `system`, `template`, `max_context_tokens`, `max_input_bytes`, and `max_output_tokens`
 
 Supported `kind` values:
 
@@ -105,40 +103,20 @@ Optional hooks live under `[hooks]`:
 - `build_prompt = "hooks/build_prompt.sh"`
 - `pre_run = "hooks/pre_run.sh"`
 
-Use `build_prompt` when the prompt should be assembled by a shell script rather
-than a static template. Use `pre_run` for validation or setup that should stop
-the app when it exits non-zero.
+Use `build_prompt` when the prompt should be assembled by a shell script rather than a static template. Use `pre_run` for validation or setup that should stop the app when it exits non-zero.
 
 ## Local Test Loop
 
-1. Create your app under `apfeller-apps/apps/<id>/`.
-2. Package a local catalog. This validates `app.toml`, checks hook paths, and
-   builds local bundle archives:
+Create your app under `apfeller-apps/apps/<id>/`, then package a local catalog and test the installed command against it:
 
 ```sh
 sh scripts/package_catalog.sh --output-dir dist --bundle-base-url "file://$PWD/dist"
-```
-
-3. Point `apfeller` at that local catalog:
-
-```sh
 APFELLER_CATALOG_URL="file://$PWD/dist/apfeller-catalog.tsv" apfeller list
-```
-
-Install your app from that same local catalog:
-
-```sh
 APFELLER_CATALOG_URL="file://$PWD/dist/apfeller-catalog.tsv" apfeller install folder-brief
-```
-
-4. Run the installed command:
-
-```sh
 folder-brief "Downloads"
 ```
 
-If your app requires extra commands such as `apfel`, install those first so the
-manager can run the app successfully.
+<p class="small-note">If your app requires extra commands such as <code>apfel</code>, install those first so the manager can run the app successfully.</p>
 
 ## Guides
 

@@ -362,6 +362,14 @@
     );
   }
 
+  function renderCopyableCodeMarkup(value) {
+    return (
+      "<div class=\"catalog-copyable\" data-copy-text=\"" + escapeHtml(value) + "\">" +
+      "<code class=\"catalog-detail-code\">" + escapeHtml(value) + "</code>" +
+      "</div>"
+    );
+  }
+
   function renderFlagListMarkup(flags) {
     return (
       "<ul class=\"catalog-option-list\">" +
@@ -402,7 +410,7 @@
     return (
       "<ul class=\"catalog-example-list\">" +
       examples.map(function (example) {
-        return "<li>" + renderCodeMarkup(example) + "</li>";
+        return "<li>" + renderCopyableCodeMarkup(example) + "</li>";
       }).join("") +
       "</ul>"
     );
@@ -481,9 +489,9 @@
     return (
       "<section class=\"catalog-detail-overview\" aria-label=\"App details overview\">" +
       "<dl class=\"catalog-detail-meta\">" +
-      renderDetailMetaRowMarkup("Install", renderCodeMarkup("apfeller install " + row.id)) +
+      renderDetailMetaRowMarkup("Install", renderCopyableCodeMarkup("apfeller install " + row.id)) +
       (usage ? (
-        renderDetailMetaRowMarkup("Usage", renderCodeMarkup(usage))
+        renderDetailMetaRowMarkup("Usage", renderCopyableCodeMarkup(usage))
       ) : "") +
       renderDetailMetaRowMarkup("Kind", "<span class=\"catalog-detail-value\">" + escapeHtml((manifest.kind || row.kind) + (outputMode ? " · " + outputMode : "")) + "</span>") +
       renderDetailMetaRowMarkup("Requires", "<span class=\"catalog-detail-value\">" + escapeHtml(formatInlineList(requires)) + "</span>") +
@@ -665,6 +673,12 @@
     var selectedTabId = "";
     var detailHost = null;
 
+    function enhanceCopyables(node) {
+      if (root.ApfellerSite && typeof root.ApfellerSite.enhanceCopyables === "function") {
+        root.ApfellerSite.enhanceCopyables(node);
+      }
+    }
+
     function setStatus(message, state) {
       statusNode.textContent = message;
       statusNode.hidden = !message;
@@ -736,11 +750,13 @@
 
       if (!selectedManifest && !selectedFallback) {
         detailHost.innerHTML = renderDetailLoadingMarkup(selectedRowData);
+        enhanceCopyables(detailHost);
         return;
       }
 
       if (selectedFallback) {
         detailHost.innerHTML = renderFallbackDetailPaneMarkup(selectedRowData, sourceUrlForRow(selectedRowData));
+        enhanceCopyables(detailHost);
         return;
       }
 
@@ -750,6 +766,7 @@
         sourceUrlForRow(selectedRowData),
         selectedTabId
       );
+      enhanceCopyables(detailHost);
     }
 
     function selectSummaryRow(summaryRow) {
@@ -867,6 +884,7 @@
       detailHost = hostNode.querySelector(".catalog-detail-host");
       detailHost.addEventListener("click", handleDetailClick);
       renderDetailPlaceholder();
+      enhanceCopyables(hostNode);
       rows.forEach(function (row) {
         tbody.appendChild(createSummaryRow(row));
       });

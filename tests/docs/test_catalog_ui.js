@@ -259,6 +259,10 @@ assert(cmdDetails.includes(">Source<"), "selected app details should include the
 assert(cmdDetails.includes("catalog-command"), "selected app details should include the command in the detail header");
 assert(cmdDetails.includes("apfeller install cmd"), "selected app details should include the install command");
 assert(cmdDetails.includes("cmd [OPTIONS] &quot;what you want to do&quot;"), "selected app details should include usage");
+assert(cmdDetails.includes("catalog-copyable"), "selected app details should render copyable code rails");
+assert(cmdDetails.includes('data-copy-text="apfeller install cmd"'), "selected app details should expose the install command for copying");
+assert(cmdDetails.includes('data-copy-text="cmd [OPTIONS] &quot;what you want to do&quot;"'), "selected app details should expose usage for copying");
+assert(cmdDetails.includes('data-copy-text="cmd &quot;find all .log files modified today&quot;"'), "selected app details should expose examples for copying");
 assert(cmdDetails.includes("role=\"tablist\""), "selected app details should render accessible tabs");
 assert(cmdDetails.includes("role=\"tabpanel\""), "selected app details should render accessible tab panels");
 assert(cmdDetails.includes("data-tab=\"examples\""), "selected app details should expose an examples tab");
@@ -303,5 +307,6 @@ const fallbackMarkup = api.renderFallbackDetailPaneMarkup(row, "https://github.c
 assert(fallbackMarkup.includes(row.description), "fallback details should preserve the catalog description");
 assert(fallbackMarkup.includes("apps/cmd"), "fallback details should point users to the app source");
 assert(fallbackMarkup.includes("catalog-detail-meta"), "fallback details should reuse compact metadata rows");
+assert(fallbackMarkup.includes('data-copy-text="apfeller install cmd"'), "fallback details should keep the install command copyable");
 assert(!fallbackMarkup.includes("role=\"tablist\""), "fallback details should avoid tabs when the manifest is unavailable");
 assert(!fallbackMarkup.includes("catalog-detail-facts"), "fallback details should not render fact cards");

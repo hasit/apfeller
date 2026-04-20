@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% assign page_title = page.title | default: "apfeller" %}
+    <title>{% if page.url == "/" %}{{ page_title }}{% else %}{{ page_title }} · apfeller{% endif %}</title>
+    <meta name="description" content="{{ page.description | default: 'apfeller is a small app manager for local shell apps built around apfel.' }}">
+    <meta name="theme-color" content="#f2ede4">
+    <link rel="stylesheet" href="{{ '/assets/site.css' | relative_url }}">
+  </head>
+  <body class="site-page site-page-{{ page.page_id | default: 'docs' }}">
+    <div class="site-shell">
+      <header class="site-header">
+        <a class="site-brand" href="{{ '/' | relative_url }}">apfeller</a>
+        <nav class="site-nav" aria-label="Primary">
+          <a class="site-nav-link{% if page.url == '/' %} is-active{% endif %}" href="{{ '/' | relative_url }}"{% if page.url == '/' %} aria-current="page"{% endif %}>home</a>
+          <a class="site-nav-link{% if page.url == '/catalog/' %} is-active{% endif %}" href="{{ '/catalog/' | relative_url }}"{% if page.url == '/catalog/' %} aria-current="page"{% endif %}>catalog</a>
+          <a class="site-nav-link{% if page.url == '/install/' %} is-active{% endif %}" href="{{ '/install/' | relative_url }}"{% if page.url == '/install/' %} aria-current="page"{% endif %}>install</a>
+          <a class="site-nav-link{% if page.url == '/write-an-app/' %} is-active{% endif %}" href="{{ '/write-an-app/' | relative_url }}"{% if page.url == '/write-an-app/' %} aria-current="page"{% endif %}>write an app</a>
+          <a class="site-nav-link" href="https://github.com/hasit/apfeller">github</a>
+        </nav>
+      </header>
+
+      <main class="site-main">
+        {% if page.section_nav %}
+        <nav class="page-section-nav" aria-label="On this page">
+          {% for item in page.section_nav %}
+          <a class="page-section-link" href="#{{ item.id }}">{{ item.label }}</a>
+          {% endfor %}
+        </nav>
+        {% endif %}
+
+        <article class="doc-shell">
+          {{ content }}
+        </article>
+      </main>
+
+      <footer class="site-footer">
+        <p class="site-footer-credit">
+          made by <a href="https://github.com/hasit">Hasit Mistry</a>
+        </p>
+        <nav class="site-footer-nav" aria-label="Footer">
+          <a href="{{ '/' | relative_url }}">Home</a>
+          <a href="{{ '/catalog/' | relative_url }}">Catalog</a>
+          <a href="{{ '/install/' | relative_url }}">Install</a>
+          <a href="{{ '/write-an-app/' | relative_url }}">Write an App</a>
+          <a href="https://github.com/hasit/apfeller">hasit/apfeller</a>
+          <a href="https://github.com/hasit/apfeller-apps">hasit/apfeller-apps</a>
+        </nav>
+      </footer>
+    </div>
+
+    <script src="{{ '/assets/site.js' | relative_url }}"></script>
+  </body>
+</html>

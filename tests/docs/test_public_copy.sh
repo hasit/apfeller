@@ -6,6 +6,9 @@ ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 . "$ROOT_DIR/tests/helpers/assert.sh"
 
 readme=$(cat "$ROOT_DIR/README.md")
+layout=$(cat "$ROOT_DIR/docs/_layouts/default.html")
+site_css=$(cat "$ROOT_DIR/docs/assets/site.css")
+site_js=$(cat "$ROOT_DIR/docs/assets/site.js")
 home_page=$(cat "$ROOT_DIR/docs/home.md")
 install_page=$(cat "$ROOT_DIR/docs/install.md")
 usage_page=$(cat "$ROOT_DIR/docs/usage.md")
@@ -23,9 +26,33 @@ assert_contains "$readme" 'scripts/package_catalog.sh' "README should document f
 assert_contains "$readme" 'apfeller-apps' "README should describe the separate app repo"
 assert_not_contains "$readme" 'https://github.com/Arthur-Ficial/apfel' "README should not link to the apfel source repo"
 
+assert_contains "$layout" "/assets/site.css" "docs layout should load the shared stylesheet"
+assert_contains "$layout" "/assets/site.js" "docs layout should load the shared script"
+assert_contains "$layout" ">home<" "docs layout should include the home nav link"
+assert_contains "$layout" ">catalog<" "docs layout should include the catalog nav link"
+assert_contains "$layout" ">install<" "docs layout should include the install nav link"
+assert_contains "$layout" ">write an app<" "docs layout should include the write-an-app nav link"
+assert_contains "$layout" ">github<" "docs layout should include the GitHub nav link"
+assert_contains "$layout" 'made by <a href="https://github.com/hasit">Hasit Mistry</a>' "docs layout should render the personal footer credit"
+assert_contains "$layout" 'https://github.com/hasit/apfeller-apps' "docs layout should link to the published app repo"
+
+assert_contains "$site_css" '.command-rail' "shared docs stylesheet should style command rails"
+assert_contains "$site_css" '.copy-button' "shared docs stylesheet should style copy buttons"
+assert_contains "$site_css" '.page-section-nav' "shared docs stylesheet should style the anchored section nav"
+assert_contains "$site_css" '.site-footer' "shared docs stylesheet should style the shared footer"
+
+assert_contains "$site_js" 'navigator.clipboard' "shared docs script should use the Clipboard API when available"
+assert_contains "$site_js" 'execCommand("copy")' "shared docs script should fall back to execCommand copy"
+assert_contains "$site_js" 'ApfellerSite' "shared docs script should expose a site helper namespace"
+assert_contains "$site_js" '.command-rail[data-copy-text], .catalog-copyable[data-copy-text]' "shared docs script should enhance page and catalog copyable code"
+assert_contains "$site_js" 'language-(sh|shell|bash|zsh|fish)' "shared docs script should target tagged shell code blocks"
+
+assert_contains "$home_page" 'layout: default' "home page should use the shared docs layout"
 assert_contains "$home_page" 'https://apfel.franzai.com/' "home page should link to apfel"
 assert_contains "$home_page" 'fully local' "home page should mention the local execution story"
 assert_contains "$home_page" 'zero API cost' "home page should mention the zero API cost story"
+assert_contains "$home_page" 'data-copy-text="curl -fsSL https://raw.githubusercontent.com/hasit/apfeller/main/install.sh | sh"' "home page should expose a copyable install rail"
+assert_contains "$home_page" 'apfeller info <app>' "home page should show the inspect flow"
 assert_contains "$home_page" '[Install apfeller](install/)' "home page should link to install"
 assert_contains "$home_page" '[Browse the catalog](catalog/)' "home page should link to the catalog"
 assert_contains "$home_page" '[Write an app](write-an-app/)' "home page should link to the app-authoring guide"
@@ -36,6 +63,7 @@ assert_not_contains "$home_page" '`cmd`' "home page should not hardcode publishe
 assert_not_contains "$home_page" '`define`' "home page should not hardcode published app ids"
 assert_not_contains "$home_page" '`oneliner`' "home page should not hardcode published app ids"
 
+assert_contains "$install_page" 'layout: default' "install page should use the shared docs layout"
 assert_contains "$install_page" 'curl -fsSL https://raw.githubusercontent.com/hasit/apfeller/main/install.sh | sh' "install page should show the public install command"
 assert_contains "$install_page" 'apfeller doctor' "install page should tell users how to verify their setup"
 assert_contains "$install_page" 'apfeller install <app>' "install page should show a generic first app install"
@@ -49,6 +77,7 @@ assert_not_contains "$install_page" '`cmd`' "install page should not hardcode pu
 assert_not_contains "$install_page" '`define`' "install page should not hardcode published app ids"
 assert_not_contains "$install_page" '`oneliner`' "install page should not hardcode published app ids"
 
+assert_contains "$usage_page" 'layout: default' "usage page should use the shared docs layout"
 assert_contains "$usage_page" 'apfeller list' "usage page should explain catalog browsing"
 assert_contains "$usage_page" 'apfeller info <app>' "usage page should explain app inspection"
 assert_contains "$usage_page" 'apfeller update --all' "usage page should explain updating apps"
@@ -62,6 +91,7 @@ assert_not_contains "$usage_page" '`cmd`' "usage page should not hardcode publis
 assert_not_contains "$usage_page" '`define`' "usage page should not hardcode published app ids"
 assert_not_contains "$usage_page" '`oneliner`' "usage page should not hardcode published app ids"
 
+assert_contains "$catalog_page" 'layout: default' "catalog page should use the shared docs layout"
 assert_contains "$catalog_page" '../assets/catalog.css' "catalog page should load its stylesheet asset"
 assert_contains "$catalog_page" '../assets/catalog.js' "catalog page should load its script asset"
 assert_contains "$catalog_page" 'https://raw.githubusercontent.com/hasit/apfeller-apps/main/catalog/latest.tsv' "catalog page should point users to the published raw catalog"
@@ -93,48 +123,48 @@ assert_contains "$catalog_js" '[[args]]' "catalog script should parse app-specif
 assert_contains "$catalog_js" 'Loading current catalog' "catalog script should support a loading state"
 assert_contains "$catalog_js" 'No apps are currently published.' "catalog script should support an empty state"
 assert_contains "$catalog_js" 'Could not load the published catalog.' "catalog script should support a fetch failure state"
+assert_contains "$catalog_js" 'catalog-copyable' "catalog script should render copyable install and example code"
+assert_contains "$catalog_js" 'data-copy-text' "catalog script should expose copy text for sitewide enhancement"
+assert_contains "$catalog_js" 'ApfellerSite.enhanceCopyables' "catalog script should re-run copy enhancements after detail rerenders"
 assert_not_contains "$catalog_js" 'loaded.' "catalog script should not show a top-level app count after loading"
 assert_not_contains "$catalog_js" 'catalog-card' "catalog script should no longer render expandable cards"
 assert_not_contains "$catalog_js" 'catalog-detail-row' "catalog script should no longer render inline detail rows"
 assert_not_contains "$catalog_js" '/contents/' "catalog script should not use the GitHub directory listing API"
 
+assert_contains "$write_page" 'layout: default' "authoring page should use the shared docs layout"
 assert_contains "$write_page" 'apps/<id>/app.toml' "authoring page should explain where app manifests live"
 assert_contains "$write_page" 'hooks/' "authoring page should explain optional hook locations"
 assert_contains "$write_page" '[[args]]' "authoring page should document optional args blocks"
 assert_contains "$write_page" 'kind = "ai-text"' "authoring page should include a complete minimal example"
 assert_contains "$write_page" 'APFELLER_CATALOG_URL="file://$PWD/dist/apfeller-catalog.tsv"' "authoring page should explain local catalog testing"
-assert_contains "$write_page" 'scripts/package_catalog.sh --output-dir dist --bundle-base-url "file://$PWD/dist"' "authoring page should explain local packaging"
+assert_contains "$write_page" 'sh scripts/package_catalog.sh --output-dir dist --bundle-base-url "file://$PWD/dist"' "authoring page should explain local packaging"
 assert_contains "$write_page" '[Browse the catalog](../catalog/)' "authoring page should use explicit guide labels"
 assert_not_contains "$write_page" 'workflow_dispatch' "authoring page should not document the release workflow"
 assert_not_contains "$write_page" 'Publish' "authoring page should stay focused on writing and testing"
 
-find "$ROOT_DIR" -name '*.md' -not -path '*/.git/*' -print | while IFS= read -r markdown_path; do
+find "$ROOT_DIR/docs" -name '*.md' -print | while IFS= read -r markdown_path; do
+  if ! grep -q '^layout: default$' "$markdown_path"; then
+    printf '%s\n' "docs page does not use the shared default layout: $markdown_path" >&2
+    exit 1
+  fi
+done
+
+find "$ROOT_DIR/docs" -name '*.md' -print | while IFS= read -r markdown_path; do
   if ! awk '
-    /^```(sh|shell|bash|zsh|fish)[[:space:]]*$/ {
+    /^```/ {
+      if (in_block) {
+        in_block = 0
+        next
+      }
+
+      if ($0 !~ /^```[A-Za-z0-9_-]+[[:space:]]*$/) {
+        exit 1
+      }
+
       in_block = 1
-      command_lines = 0
-      next
-    }
-    in_block && /^```[[:space:]]*$/ {
-      if (command_lines > 1) {
-        exit 1
-      }
-      in_block = 0
-      command_lines = 0
-      next
-    }
-    in_block {
-      if ($0 ~ /[^[:space:]]/) {
-        command_lines++
-      }
-    }
-    END {
-      if (in_block && command_lines > 1) {
-        exit 1
-      }
     }
   ' "$markdown_path"; then
-    printf '%s\n' "markdown file contains a multi-command shell code block: $markdown_path" >&2
+    printf '%s\n' "docs page contains an untagged fenced code block: $markdown_path" >&2
     exit 1
   fi
 done
