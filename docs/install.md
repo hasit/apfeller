@@ -22,13 +22,27 @@ page_id: install
 
 ## First Five Minutes
 
-Use this flow to verify the manager and install your first app:
+Verify that the manager is available:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/hasit/apfeller/main/install.sh | sh
 apfeller --version
+```
+
+Run a quick health check:
+
+```sh
 apfeller doctor
+```
+
+Browse the catalog:
+
+```sh
 apfeller list
+```
+
+Install your first app:
+
+```sh
 apfeller install <app>
 ```
 

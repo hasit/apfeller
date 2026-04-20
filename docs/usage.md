@@ -16,7 +16,17 @@ Use the [Catalog](../catalog/) page when you want the published app list in the 
 
 ```sh
 apfeller list
+```
+
+Show only the apps you already installed:
+
+```sh
 apfeller list --installed
+```
+
+See details for one app before you install it:
+
+```sh
 apfeller info <app>
 ```
 
@@ -26,6 +36,11 @@ Install one or more apps from the published catalog, then remove the ones you no
 
 ```sh
 apfeller install <app>
+```
+
+Remove apps you no longer want:
+
+```sh
 apfeller uninstall <app>
 ```
 
@@ -37,7 +52,17 @@ Use explicit update commands depending on whether you want the manager, every in
 
 ```sh
 apfeller update --self
+```
+
+Update every installed app:
+
+```sh
 apfeller update --all
+```
+
+Update just one app:
+
+```sh
 apfeller update <app>
 ```
 
@@ -50,16 +75,6 @@ apfeller doctor
 ```
 
 This reports whether `apfeller` can see the tools and shell integration it needs, including `curl`, `tar`, `shasum`, and any older state files worth cleaning up.
-
-## A Simple Session
-
-```sh
-apfeller list
-apfeller info <app>
-apfeller install <app>
-<app> --help
-apfeller update --all
-```
 
 ## Guides
 

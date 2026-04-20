@@ -46,6 +46,7 @@ assert_contains "$site_js" 'execCommand("copy")' "shared docs script should fall
 assert_contains "$site_js" 'ApfellerSite' "shared docs script should expose a site helper namespace"
 assert_contains "$site_js" '.command-rail[data-copy-text], .catalog-copyable[data-copy-text]' "shared docs script should enhance page and catalog copyable code"
 assert_contains "$site_js" 'language-(sh|shell|bash|zsh|fish)' "shared docs script should target tagged shell code blocks"
+assert_contains "$site_js" 'isSingleRunnableCommand' "shared docs script should only copy single runnable commands"
 
 assert_contains "$home_page" 'layout: default' "home page should use the shared docs layout"
 assert_contains "$home_page" 'https://apfel.franzai.com/' "home page should link to apfel"
@@ -150,21 +151,44 @@ find "$ROOT_DIR/docs" -name '*.md' -print | while IFS= read -r markdown_path; do
 done
 
 find "$ROOT_DIR/docs" -name '*.md' -print | while IFS= read -r markdown_path; do
-  if ! awk '
+  if awk '
     /^```/ {
       if (in_block) {
+        if (shell_block && command_lines != 1) {
+          exit 1
+        }
         in_block = 0
+        shell_block = 0
+        command_lines = 0
         next
       }
 
       if ($0 !~ /^```[A-Za-z0-9_-]+[[:space:]]*$/) {
-        exit 1
+        exit 2
       }
 
       in_block = 1
+      shell_block = ($0 ~ /^```(sh|shell|bash|zsh|fish)[[:space:]]*$/)
+      command_lines = 0
+      next
+    }
+    in_block && shell_block && $0 ~ /[^[:space:]]/ {
+      command_lines++
+    }
+    END {
+      if (in_block && shell_block && command_lines != 1) {
+        exit 1
+      }
     }
   ' "$markdown_path"; then
-    printf '%s\n' "docs page contains an untagged fenced code block: $markdown_path" >&2
+    :
+  else
+    status=$?
+    if [ "$status" -eq 2 ]; then
+      printf '%s\n' "docs page contains an untagged fenced code block: $markdown_path" >&2
+    else
+      printf '%s\n' "docs page contains a multi-command shell code block: $markdown_path" >&2
+    fi
     exit 1
   fi
 done

@@ -111,8 +111,23 @@ Create your app under `apfeller-apps/apps/<id>/`, then package a local catalog a
 
 ```sh
 sh scripts/package_catalog.sh --output-dir dist --bundle-base-url "file://$PWD/dist"
+```
+
+Point `apfeller` at that local catalog:
+
+```sh
 APFELLER_CATALOG_URL="file://$PWD/dist/apfeller-catalog.tsv" apfeller list
+```
+
+Install your app from that same local catalog:
+
+```sh
 APFELLER_CATALOG_URL="file://$PWD/dist/apfeller-catalog.tsv" apfeller install folder-brief
+```
+
+Run the installed command:
+
+```sh
 folder-brief "Downloads"
 ```
 

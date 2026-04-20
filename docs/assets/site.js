@@ -5,6 +5,14 @@
     return String(value).replace(/\n$/, "");
   }
 
+  function isSingleRunnableCommand(value) {
+    var lines = trimTrailingNewline(value).split(/\r?\n/).filter(function (line) {
+      return line.trim() !== "";
+    });
+
+    return lines.length === 1;
+  }
+
   function isShellCodeNode(codeNode) {
     var className = (codeNode && codeNode.className) || "";
     var wrapper = codeNode && codeNode.closest ? codeNode.closest("[class*='language-'], .highlighter-rouge") : null;
@@ -107,7 +115,7 @@
       }
 
       text = rail.getAttribute("data-copy-text");
-      if (!text) {
+      if (!text || !isSingleRunnableCommand(text)) {
         return;
       }
 
@@ -133,7 +141,7 @@
       }
 
       codeText = trimTrailingNewline(codeNode.textContent || "");
-      if (!codeText) {
+      if (!codeText || !isSingleRunnableCommand(codeText)) {
         return;
       }
 

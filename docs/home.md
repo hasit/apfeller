@@ -18,9 +18,21 @@ Install the manager once, browse the published [Catalog](catalog/), and install 
 
 ## Quick Start
 
+Install the manager:
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/hasit/apfeller/main/install.sh | sh
+```
+
+List the published catalog:
+
+```sh
 apfeller list
+```
+
+Install one app from the [Catalog](catalog/) page:
+
+```sh
 apfeller install <app>
 ```
 
