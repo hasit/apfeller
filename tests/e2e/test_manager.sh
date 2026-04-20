@@ -33,7 +33,6 @@ assert_contains "$list_output" "fixture-cmd	$fixture_cmd_revision	available" "ca
 assert_contains "$list_output" "fixture-define	$fixture_define_revision	available" "catalog listing should include fixture-define with its revision"
 assert_contains "$list_output" "fixture-oneliner	$fixture_oneliner_revision	available" "catalog listing should include fixture-oneliner with its revision"
 assert_not_contains "$list_output" 'port' "catalog listing should not include removed non-apfel apps"
-assert_not_contains "$list_output" "$tab" "catalog listing should render padded columns"
 
 info_output=$(framework_run_manager info fixture-cmd)
 assert_contains "$info_output" 'id: fixture-cmd' "info should show the requested app"
