@@ -26,12 +26,14 @@ fixture_cmd_revision=$(awk -F '\t' 'NR > 1 && $1 == "fixture-cmd" { print $2; ex
 fixture_define_revision=$(awk -F '\t' 'NR > 1 && $1 == "fixture-define" { print $2; exit }' "$catalog_path")
 fixture_oneliner_revision=$(awk -F '\t' 'NR > 1 && $1 == "fixture-oneliner" { print $2; exit }' "$catalog_path")
 fixture_cmd_bundle_url=$(awk -F '\t' 'NR > 1 && $1 == "fixture-cmd" { print $9; exit }' "$catalog_path")
+tab=$(printf '\t')
 
 list_output=$(framework_run_manager list)
 assert_contains "$list_output" "fixture-cmd	$fixture_cmd_revision	available" "catalog listing should include fixture-cmd with its revision"
 assert_contains "$list_output" "fixture-define	$fixture_define_revision	available" "catalog listing should include fixture-define with its revision"
 assert_contains "$list_output" "fixture-oneliner	$fixture_oneliner_revision	available" "catalog listing should include fixture-oneliner with its revision"
 assert_not_contains "$list_output" 'port' "catalog listing should not include removed non-apfel apps"
+assert_not_contains "$list_output" "$tab" "catalog listing should render padded columns"
 
 info_output=$(framework_run_manager info fixture-cmd)
 assert_contains "$info_output" 'id: fixture-cmd' "info should show the requested app"
@@ -160,6 +162,28 @@ assert_contains "$doctor_output" 'manager_path' "doctor should report manager pa
 assert_contains "$doctor_output" 'apfel	ok' "doctor should report apfel readiness when apfel is present"
 assert_contains "$doctor_output" 'legacy_state_json' "doctor should report legacy JSON status"
 
+tty_doctor_runner="$tmp_dir/doctor-tty.sh"
+cat >"$tty_doctor_runner" <<EOF
+#!/bin/sh
+set -eu
+HOME=$TEST_HOME_DIR
+PATH=$TEST_HOME_DIR/.local/bin:$TEST_STUB_DIR:$BASE_PATH
+TERM=xterm-256color
+APFELLER_SHELL=zsh
+APFELLER_CATALOG_URL=file://$TEST_CATALOG_PATH
+APFELLER_INSTALL_URL=file://$TEST_DIST_DIR/apfeller.tar.gz
+export HOME PATH TERM APFELLER_SHELL APFELLER_CATALOG_URL APFELLER_INSTALL_URL
+apfeller doctor
+EOF
+chmod +x "$tty_doctor_runner"
+
+tty_doctor_output=$(run_pty_script "$tty_doctor_runner")
+printf '%s\n' "$tty_doctor_output" | grep -Eq '^manager_path[[:space:]]+/.+$' || {
+  printf '%s\n' "expected tty doctor output to render aligned columns" >&2
+  exit 1
+}
+assert_not_contains "$tty_doctor_output" "$(printf 'manager_path\t')" "tty doctor output should render aligned columns instead of raw tabs"
+
 doctor_missing_apfel_output=$(
   HOME="$TEST_HOME_DIR" \
   PATH="$TEST_HOME_DIR/.local/bin:$BASE_PATH" \
@@ -168,7 +192,7 @@ doctor_missing_apfel_output=$(
   APFELLER_INSTALL_URL="file://$TEST_DIST_DIR/apfeller.tar.gz" \
   apfeller doctor
 )
-assert_contains "$doctor_missing_apfel_output" 'apfel	warn	Install with: brew install Arthur-Ficial/tap/apfel' "doctor should tell the user how to install apfel when it is missing"
+assert_contains "$doctor_missing_apfel_output" 'apfel	warn: Install with: brew install Arthur-Ficial/tap/apfel' "doctor should tell the user how to install apfel when it is missing"
 
 probe_stub_dir="$tmp_dir/probe-stub"
 mkdir -p "$probe_stub_dir"

@@ -1801,7 +1801,6 @@ cmd_list() {
 
     emit_list_output "$rows_path" "APP" "INSTALLED" "STATUS" "PUBLISHED"
     rm -f "$rows_path"
-
     return 0
   fi
 
@@ -1946,30 +1945,41 @@ cmd_doctor() {
       ;;
   esac
 
-  printf 'manager_path\t%s\n' "$manager_path"
-  printf 'local_bin_on_path\t%s\n' "$local_bin_status"
-  printf 'catalog_url\t%s\n' "$CATALOG_URL"
-  printf 'detected_shell\t%s\n' "$shell_kind"
-  printf 'state_tsv\t%s\n' "$(status_for_path "$STATE_PATH")"
-  printf 'fish_conf\t%s\n' "$(status_for_path "$FISH_CONF_PATH")"
-  printf 'zsh_init\t%s\n' "$(status_for_path "$ZSH_INIT_PATH")"
-  printf 'fish_completion_dir\t%s\n' "$(status_for_path "$FISH_COMPLETION_DIR")"
-  printf 'zsh_completion_dir\t%s\n' "$(status_for_path "$ZSH_COMPLETION_DIR")"
-  if command_exists apfel; then
-    printf 'apfel\tok\n'
-  else
-    printf 'apfel\twarn\tInstall with: brew install Arthur-Ficial/tap/apfel\n'
-  fi
-  printf 'curl\t%s\n' "$(command_exists curl && printf present || printf missing)"
-  printf 'tar\t%s\n' "$(command_exists tar && printf present || printf missing)"
-  printf 'shasum\t%s\n' "$(command_exists shasum && printf present || printf missing)"
-
   legacy_state_json="$DATA_DIR/state.json"
-  if [ -f "$legacy_state_json" ]; then
-    printf 'legacy_state_json\twarn\t%s\n' "$legacy_state_json"
+  rows_path=$(mktemp "${TMPDIR:-/tmp}/apfeller-doctor.XXXXXX")
+  {
+    printf 'manager_path\t%s\n' "$manager_path"
+    printf 'local_bin_on_path\t%s\n' "$local_bin_status"
+    printf 'catalog_url\t%s\n' "$CATALOG_URL"
+    printf 'detected_shell\t%s\n' "$shell_kind"
+    printf 'state_tsv\t%s\n' "$(status_for_path "$STATE_PATH")"
+    printf 'fish_conf\t%s\n' "$(status_for_path "$FISH_CONF_PATH")"
+    printf 'zsh_init\t%s\n' "$(status_for_path "$ZSH_INIT_PATH")"
+    printf 'fish_completion_dir\t%s\n' "$(status_for_path "$FISH_COMPLETION_DIR")"
+    printf 'zsh_completion_dir\t%s\n' "$(status_for_path "$ZSH_COMPLETION_DIR")"
+    if command_exists apfel; then
+      printf 'apfel\tok\n'
+    else
+      printf 'apfel\twarn: Install with: brew install Arthur-Ficial/tap/apfel\n'
+    fi
+    printf 'curl\t%s\n' "$(command_exists curl && printf present || printf missing)"
+    printf 'tar\t%s\n' "$(command_exists tar && printf present || printf missing)"
+    printf 'shasum\t%s\n' "$(command_exists shasum && printf present || printf missing)"
+
+    if [ -f "$legacy_state_json" ]; then
+      printf 'legacy_state_json\twarn: %s\n' "$legacy_state_json"
+    else
+      printf 'legacy_state_json\tok\n'
+    fi
+  } >"$rows_path"
+
+  if stdout_can_render_table; then
+    render_tsv_table "$rows_path"
   else
-    printf 'legacy_state_json\tok\n'
+    cat "$rows_path"
   fi
+
+  rm -f "$rows_path"
 }
 
 main() {
