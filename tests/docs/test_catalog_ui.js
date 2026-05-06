@@ -169,37 +169,12 @@ assert(Array.isArray(naming.args[0].choices) && naming.args[0].choices.includes(
 const commandFlags = api.buildBuiltinFlags("shell_command");
 const textFlags = api.buildBuiltinFlags("text");
 const structuredFlags = api.buildBuiltinFlags("structured_text");
-const downloadTotals = api.buildDownloadTotals([
-  {
-    tag_name: "cmd-aaa111",
-    assets: [
-      { name: "cmd-aaa111.tar.gz", download_count: 4 },
-      { name: "cmd-aaa111.sha256", download_count: 99 }
-    ]
-  },
-  {
-    tag_name: "cmd-bbb222",
-    assets: [
-      { name: "cmd-bbb222.tar.gz", download_count: 7 }
-    ]
-  },
-  {
-    tag_name: "log-digest-ccc333",
-    assets: [
-      { name: "log-digest-ccc333.tar.gz", download_count: 3 }
-    ]
-  }
-]);
 
 assert(commandFlags.length === 3, "shell_command apps should expose help, copy, and execute");
 assert(commandFlags.some((flag) => flag.signature.indexOf("--execute") !== -1), "shell_command flags should include execute");
 assert(textFlags.length === 2 && textFlags.some((flag) => flag.signature.indexOf("--copy") !== -1), "text apps should expose copy");
 assert(structuredFlags.length === 2, "structured_text apps should expose help and copy");
-assert(downloadTotals.cmd === 11, "download totals should sum bundle downloads across app revisions");
-assert(downloadTotals["log-digest"] === 3, "download totals should support app ids with hyphens");
-assert(typeof downloadTotals.cmd === "number" && downloadTotals.cmd !== 110, "download totals should ignore non-bundle assets");
 
-assert(api.constants.TABLE_COLUMN_COUNT === 5, "catalog table should expose the expected number of columns");
 assert(api.constants.DETAIL_PANE_ID === "catalog-detail-pane", "catalog detail pane should expose a stable id");
 assert(api.defaultDetailTabId(cmd) === "examples", "apps with examples should default to the examples tab");
 assert(api.defaultDetailTabId({ help: { examples: [] } }) === "flags", "apps without examples should default to the flags tab");
@@ -211,15 +186,14 @@ const row = {
   description: "Generate a single macOS shell command from a natural language request.",
   requires: "apfel,pbcopy",
   supported_shells: "fish,zsh",
-  kind: "ai-command",
-  downloads: 0
+  kind: "ai-command"
 };
 
 const headerMarkup = api.renderTableHeaderMarkup();
 assert(headerMarkup.includes("catalog-col-app"), "catalog table header should include the app column");
 assert(!headerMarkup.includes(">Command<"), "catalog table header should not keep the command column");
 assert(!headerMarkup.includes(">Source<"), "catalog table header should not keep the source column");
-assert(headerMarkup.includes(">Downloads<"), "catalog table header should include the downloads column");
+assert(!headerMarkup.includes(">Downloads<"), "catalog table header should not include the downloads column");
 
 const summaryCells = api.renderSummaryRowCellsMarkup(row, false);
 assert(summaryCells.includes("catalog-row-toggle"), "collapsed rows should render a disclosure control");
@@ -235,19 +209,6 @@ assert(!summaryCells.includes("apfeller install cmd"), "collapsed rows should no
 
 const selectedSummaryCells = api.renderSummaryRowCellsMarkup(row, true);
 assert(selectedSummaryCells.includes("aria-pressed=\"true\""), "selected rows should expose pressed state");
-
-const summaryWithDownloads = api.renderSummaryRowCellsMarkup({
-  id: "define",
-  command: "define",
-  summary: "Define a word or phrase.",
-  description: "Tiny multilingual dictionary lookup.",
-  requires: "apfel,pbcopy",
-  supported_shells: "fish,zsh",
-  kind: "ai-text",
-  downloads: 12
-}, false);
-assert(summaryWithDownloads.includes("12 downloads"), "collapsed rows should use generic download count copy");
-assert(!summaryWithDownloads.includes("GitHub downloads"), "collapsed rows should not mention GitHub in the download text");
 
 const placeholderMarkup = api.renderDetailPlaceholderMarkup();
 assert(placeholderMarkup.includes("Select an app to see install details"), "catalog detail pane should render an empty selection hint");

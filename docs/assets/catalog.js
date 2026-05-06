@@ -3,8 +3,6 @@
   var APPS_REPO_URL = "https://github.com/hasit/apfeller-apps";
   var APP_SOURCE_BASE_URL = "https://github.com/hasit/apfeller-apps/tree/main/apps/";
   var APP_MANIFEST_BASE_URL = "https://raw.githubusercontent.com/hasit/apfeller-apps/main/apps/";
-  var RELEASES_API_URL = "https://api.github.com/repos/hasit/apfeller-apps/releases?per_page=100";
-  var TABLE_COLUMN_COUNT = 5;
   var DETAIL_PANE_ID = "catalog-detail-pane";
 
   function escapeHtml(value) {
@@ -24,33 +22,6 @@
     return value.split(",").map(function (item) {
       return item.trim();
     }).filter(Boolean);
-  }
-
-  function formatDownloads(value) {
-    if (typeof value !== "number") {
-      return "";
-    }
-
-    if (value === 1) {
-      return "1 download";
-    }
-
-    return value.toLocaleString("en-US") + " downloads";
-  }
-
-  function appIdFromReleaseTag(tagName) {
-    var separatorIndex;
-
-    if (!tagName) {
-      return "";
-    }
-
-    separatorIndex = tagName.lastIndexOf("-");
-    if (separatorIndex <= 0) {
-      return "";
-    }
-
-    return tagName.slice(0, separatorIndex);
   }
 
   function parseCatalog(text) {
@@ -295,14 +266,12 @@
       "<th scope=\"col\" class=\"catalog-col-summary\">Summary</th>" +
       "<th scope=\"col\" class=\"catalog-col-requires\">Requires</th>" +
       "<th scope=\"col\" class=\"catalog-col-shells\">Shells</th>" +
-      "<th scope=\"col\" class=\"catalog-col-downloads\">Downloads</th>" +
       "</tr>" +
       "</thead>"
     );
   }
 
   function renderSummaryRowCellsMarkup(row, isSelected) {
-    var downloads = row.downloads > 0 ? escapeHtml(formatDownloads(row.downloads)) : "";
     var requiresText = formatInlineList(splitCsv(row.requires));
     var shellsText = formatInlineList(splitCsv(row.supported_shells));
 
@@ -314,8 +283,7 @@
       "</td>" +
       "<td class=\"catalog-col-summary\"><span class=\"catalog-summary\" title=\"" + escapeHtml(row.summary) + "\">" + escapeHtml(row.summary) + "</span></td>" +
       "<td class=\"catalog-col-requires\"><span class=\"catalog-inline-list\" title=\"" + escapeHtml(requiresText) + "\">" + escapeHtml(requiresText) + "</span></td>" +
-      "<td class=\"catalog-col-shells\"><span class=\"catalog-inline-list\" title=\"" + escapeHtml(shellsText) + "\">" + escapeHtml(shellsText) + "</span></td>" +
-      "<td class=\"catalog-col-downloads\">" + (downloads ? "<span class=\"catalog-downloads\">" + downloads + "</span>" : "") + "</td>"
+      "<td class=\"catalog-col-shells\"><span class=\"catalog-inline-list\" title=\"" + escapeHtml(shellsText) + "\">" + escapeHtml(shellsText) + "</span></td>"
     );
   }
 
@@ -506,9 +474,6 @@
     var examples = manifest.help && Array.isArray(manifest.help.examples) ? manifest.help.examples : [];
     var outputMode = manifest.output && manifest.output.mode ? manifest.output.mode : "";
     var builtinFlags = buildBuiltinFlags(outputMode);
-    var downloads = row.downloads > 0
-      ? "<span class=\"catalog-downloads\">" + escapeHtml(formatDownloads(row.downloads)) + "</span>"
-      : "";
     var activeTab = selectedTabId || defaultDetailTabId(manifest);
     var appFlags = (manifest.args || []).map(function (arg) {
       return {
@@ -528,7 +493,6 @@
       "<code class=\"catalog-command\">" + escapeHtml(manifest.command || row.command) + "</code>" +
       "</div>" +
       "<div class=\"catalog-detail-actions\">" +
-      downloads +
       "<a class=\"catalog-source-link\" href=\"" + sourceUrl + "\">Source</a>" +
       "</div>" +
       "</div>" +
@@ -611,52 +575,6 @@
       "<p>Try the raw catalog directly or browse apfeller-apps.</p>" +
       "<p><a href=\"" + CATALOG_URL + "\">Open raw catalog</a> | <a href=\"" + APPS_REPO_URL + "\">Browse apfeller-apps</a></p>" +
       "</section>";
-  }
-
-  function buildDownloadTotals(releases) {
-    var totals = {};
-
-    if (!Array.isArray(releases)) {
-      return totals;
-    }
-
-    releases.forEach(function (release) {
-      var tagName = release && release.tag_name;
-      var appId = appIdFromReleaseTag(tagName);
-      var expectedAssetName;
-
-      if (!appId || !Array.isArray(release.assets)) {
-        return;
-      }
-
-      expectedAssetName = tagName + ".tar.gz";
-
-      release.assets.forEach(function (asset) {
-        if (!asset || asset.name !== expectedAssetName || typeof asset.download_count !== "number") {
-          return;
-        }
-
-        totals[appId] = (totals[appId] || 0) + asset.download_count;
-      });
-    });
-
-    return totals;
-  }
-
-  function loadDownloadTotals(fetchFn) {
-    return fetchFn(RELEASES_API_URL, { cache: "no-store" })
-      .then(function (response) {
-        if (!response.ok) {
-          return {};
-        }
-        return response.json();
-      })
-      .then(function (releases) {
-        return buildDownloadTotals(releases);
-      })
-      .catch(function () {
-        return {};
-      });
   }
 
   function createCatalogApp(env) {
@@ -909,12 +827,7 @@
             return null;
           }
 
-          return loadDownloadTotals(fetchFn).then(function (downloadTotals) {
-            rows.forEach(function (row) {
-              row.downloads = downloadTotals[row.id] || 0;
-            });
-            return rows;
-          });
+          return rows;
         })
         .then(function (rows) {
           if (!rows) {
@@ -938,7 +851,6 @@
   root.ApfellerCatalog = {
     parseCatalog: parseCatalog,
     parseAppManifest: parseAppManifest,
-    buildDownloadTotals: buildDownloadTotals,
     buildBuiltinFlags: buildBuiltinFlags,
     defaultDetailTabId: defaultDetailTabId,
     renderTableHeaderMarkup: renderTableHeaderMarkup,
@@ -951,8 +863,6 @@
       CATALOG_URL: CATALOG_URL,
       APP_SOURCE_BASE_URL: APP_SOURCE_BASE_URL,
       APP_MANIFEST_BASE_URL: APP_MANIFEST_BASE_URL,
-      RELEASES_API_URL: RELEASES_API_URL,
-      TABLE_COLUMN_COUNT: TABLE_COLUMN_COUNT,
       DETAIL_PANE_ID: DETAIL_PANE_ID
     }
   };

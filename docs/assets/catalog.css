@@ -94,12 +94,6 @@
   width: 11%;
 }
 
-.catalog-col-downloads {
-  width: 8rem;
-  text-align: right;
-  white-space: nowrap;
-}
-
 .catalog-row-toggle {
   display: block;
   width: 100%;
@@ -141,12 +135,6 @@
   color: #5b503d;
   font-size: 0.77rem;
   line-height: 1.25;
-}
-
-.catalog-downloads {
-  color: #35523b;
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
 }
 
 .catalog-detail-shell {
@@ -421,7 +409,6 @@
   .catalog-col-summary,
   .catalog-col-requires,
   .catalog-col-shells,
-  .catalog-col-downloads,
   .catalog-col-app {
     width: auto;
   }
